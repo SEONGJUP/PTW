@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #94a3b8;
+  --sidebar-active: #00B7AF;
+
+  /* Brand color system */
+  --primary: #00B7AF;
+  --primary-dark: #00A099;
+  --primary-light: #E6FAF9;
+  --primary-muted: #b2ece9;
+  --primary-surface: #f0fffe;
+
+  /* Animation durations */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 300ms;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Animations ─────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes checkPop {
+  0%   { transform: scale(0.7); }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pulseOnce {
+  0%   { box-shadow: 0 0 0 0 rgba(0,183,175,0.4); }
+  70%  { box-shadow: 0 0 0 6px rgba(0,183,175,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,183,175,0); }
+}
+
+/* Utility animation classes */
+.anim-fade-in {
+  animation: fadeIn var(--dur-base) ease-out both;
+}
+
+.anim-fade-in-up {
+  animation: fadeInUp var(--dur-base) ease-out both;
+}
+
+.anim-slide-down {
+  animation: slideDown var(--dur-fast) ease-out both;
+}
+
+.anim-slide-right {
+  animation: slideRight var(--dur-base) ease-out both;
+}
+
+.anim-check {
+  animation: checkPop var(--dur-fast) ease-out both;
+}
+
+/* Staggered section entries */
+.section-block:nth-child(1)  { animation-delay: 0ms; }
+.section-block:nth-child(2)  { animation-delay: 40ms; }
+.section-block:nth-child(3)  { animation-delay: 80ms; }
+.section-block:nth-child(4)  { animation-delay: 120ms; }
+.section-block:nth-child(5)  { animation-delay: 160ms; }
+.section-block:nth-child(6)  { animation-delay: 200ms; }
+
+/* ─── Sidebar ────────────────────────────────────────────── */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: all 0.15s;
+}
+
+.sidebar-link:hover {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.sidebar-link.active {
+  background: rgba(0,183,175,0.15);
+  color: var(--primary);
+}
+
+/* ─── Form inputs (global focus ring) ───────────────────── */
+.ptw-input {
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.ptw-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0,183,175,0.12);
+  outline: none;
+}
+
+/* ─── Form label ─────────────────────────────────────────── */
+.ptw-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 4px;
+  letter-spacing: 0.01em;
+}
+
+/* ─── Section card ───────────────────────────────────────── */
+.ptw-section-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e8edf2;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.ptw-section-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e8edf2;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.ptw-section-card-body {
+  padding: 14px;
+}
+
+/* ─── Table ──────────────────────────────────────────────── */
+.ptw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ptw-table th {
+  padding: 7px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--primary-light);
+  border-bottom: 1px solid #b2ece9;
+}
+
+.ptw-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.ptw-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ptw-table tr:hover td {
+  background: #fafcfc;
+}
+
+/* ─── Modal overlay ─────────────────────────────────────── */
+.modal-enter {
+  animation: fadeIn var(--dur-fast) ease-out both;
+}
+
+.modal-content-enter {
+  animation: fadeInUp var(--dur-base) ease-out both;
+}
