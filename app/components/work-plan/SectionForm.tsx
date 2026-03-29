@@ -521,7 +521,7 @@ function HeavyGoodsForm() {
   );
 }
 
-// ─── 장비 관리대장 불러오기 모달 ─────────────────────────────────────
+// ─── 장비·기계 관리 불러오기 모달 ─────────────────────────────────────
 function EquipmentRegistryPickerModal({
   onSelect,
   onClose,
@@ -563,7 +563,7 @@ function EquipmentRegistryPickerModal({
           className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0"
           style={{ background: PRIMARY_LIGHT }}
         >
-          <span className="text-sm font-bold" style={{ color: PRIMARY }}>📋 장비 관리대장에서 불러오기</span>
+          <span className="text-sm font-bold" style={{ color: PRIMARY }}>📋 장비·기계 관리에서 불러오기</span>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg font-bold w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100">✕</button>
         </div>
         <div className="px-4 py-2 border-b flex-shrink-0">
@@ -579,7 +579,7 @@ function EquipmentRegistryPickerModal({
         <div className="overflow-y-auto flex-1">
           {filtered.length === 0 ? (
             <div className="py-12 text-center text-sm text-slate-400">
-              {records.length === 0 ? "장비 관리대장에 등록된 장비가 없습니다" : "검색 결과가 없습니다"}
+              {records.length === 0 ? "장비·기계 관리에 등록된 장비가 없습니다" : "검색 결과가 없습니다"}
             </div>
           ) : (
             filtered.map((rec) => {
@@ -604,15 +604,6 @@ function EquipmentRegistryPickerModal({
                       )}
                     </div>
                   </div>
-                  <span
-                    className="text-xs px-2 py-1 rounded-full font-medium flex-shrink-0"
-                    style={{
-                      background: rec.status === "active" ? "#dcfce7" : rec.status === "maintenance" ? "#fef3c7" : "#f1f5f9",
-                      color: rec.status === "active" ? "#16a34a" : rec.status === "maintenance" ? "#d97706" : "#94a3b8",
-                    }}
-                  >
-                    {rec.status === "active" ? "운용중" : rec.status === "maintenance" ? "점검/수리중" : "미운용"}
-                  </span>
                 </button>
               );
             })
@@ -688,7 +679,7 @@ function EquipmentInfoForm() {
           newRows = [...newRows, { id: eqType, equipmentType: eqType, name: CONSTRUCTION_EQUIPMENT_TYPES[eqType].label, spec: rec.capacity || rec.dimensions || "", qty: "1", ownership: "자사" }];
         }
         updateFormData(`${eqType}_machine_spec`, {
-          rows: [{ ...EMPTY_MACHINE_ROW(), machineName: rec.name, regNo: rec.registrationNumber || "", maker: rec.manufacturer || "", model: rec.model || "", capacity: rec.capacity || "", dimensions: rec.dimensions || "", year: rec.year || "", inspectionExpiry: rec.nextInspectionDate || "" }],
+          rows: [{ ...EMPTY_MACHINE_ROW(), machineName: rec.name, equipmentTypeName: CONSTRUCTION_EQUIPMENT_TYPES[eqType]?.label ?? "", regNo: rec.registrationNumber || "", maker: rec.manufacturer || "", model: rec.model || "", capacity: rec.capacity || "", dimensions: rec.dimensions || "", year: rec.year || "", inspectionExpiry: rec.nextInspectionDate || "" }],
         });
         setExpandedEq((prev) => ({ ...prev, [eqType]: true }));
       } else {
@@ -764,7 +755,7 @@ function EquipmentInfoForm() {
             className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all hover:opacity-80"
             style={{ borderColor: PRIMARY, color: PRIMARY, background: PRIMARY_LIGHT }}
           >
-            📋 장비 관리대장에서 불러오기
+            📋 장비·기계 관리에서 불러오기
           </button>
         </div>
 
@@ -967,7 +958,7 @@ function EquipmentInfoForm() {
           className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all hover:opacity-80"
           style={{ borderColor: PRIMARY, color: PRIMARY, background: PRIMARY_LIGHT }}
         >
-          📋 장비 관리대장에서 불러오기
+          📋 장비·기계 관리에서 불러오기
         </button>
       </div>
       {pickerOpen && (
@@ -1974,7 +1965,10 @@ function OperatorsForm() {
 // ─── 기계 제원 (장비별 전용, 팩토리 패턴) ───────────────────────
 interface AdditionalPart { id: string; partName: string; material: string; ratedLoad: string; method: string }
 interface MachineRow {
-  id: string; machineName: string; regNo: string; maker: string; model: string;
+  id: string;
+  machineName: string;       // 장비명
+  equipmentTypeName: string; // 장비종류 (직접 입력)
+  regNo: string; maker: string; model: string;
   capacity: string; dimensions: string; year: string; note: string;
   workRadius: string;
   inspectionExpiry: string; inspectionNA: boolean;
@@ -1984,7 +1978,7 @@ interface MachineRow {
 interface MachineSpecData { rows?: MachineRow[] }
 
 const EMPTY_MACHINE_ROW = (): MachineRow => ({
-  id: `ms${Date.now()}`, machineName: "", regNo: "", maker: "",
+  id: `ms${Date.now()}`, machineName: "", equipmentTypeName: "", regNo: "", maker: "",
   model: "", capacity: "", dimensions: "", year: "", note: "",
   workRadius: "", inspectionExpiry: "", inspectionNA: false,
   insuranceStart: "", insuranceEnd: "", insuranceNA: false,
@@ -1992,6 +1986,10 @@ const EMPTY_MACHINE_ROW = (): MachineRow => ({
 });
 
 function makeMachineSpecForm(sectionId: string) {
+  // sectionId 예: "excavator_machine_spec" → eqTypeKey = "excavator"
+  const eqTypeKey = sectionId.replace("_machine_spec", "") as EquipmentType;
+  const defaultEqTypeName = CONSTRUCTION_EQUIPMENT_TYPES[eqTypeKey]?.label ?? "";
+
   return function MachineSpecFormInner() {
     const { formData, updateFormData } = useWorkPlanStore();
     const data = (formData[sectionId] as MachineSpecData) ?? {};
@@ -2002,7 +2000,7 @@ function makeMachineSpecForm(sectionId: string) {
     const updateRow = (id: string, key: keyof MachineRow, value: string | boolean) =>
       save(rows.map((r) => r.id === id ? { ...r, [key]: value } : r));
     const addRow = (preset?: Partial<MachineRow>) =>
-      save([...rows, { ...EMPTY_MACHINE_ROW(), ...preset }]);
+      save([...rows, { ...EMPTY_MACHINE_ROW(), equipmentTypeName: defaultEqTypeName, ...preset }]);
     const removeRow = (id: string) => save(rows.filter((r) => r.id !== id));
     const toggleExpand = (id: string) =>
       setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -2053,14 +2051,14 @@ function makeMachineSpecForm(sectionId: string) {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ background: PRIMARY_LIGHT }}>
-                    {["기계명", "등록번호", "제조사", "모델명", "정격하중/용량", "제원(L×W×H)", "연식", "특이사항", ""].map((h) => (
+                    {["장비명", "장비종류", "등록번호", "제조사", "모델명", "정격하중/용량", "제원(L×W×H)", "연식", "특이사항", ""].map((h) => (
                       <th key={h} className="px-3 py-2 text-left font-medium text-slate-600 text-xs whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-t border-slate-100">
-                    {(["machineName","regNo","maker","model","capacity","dimensions","year","note"] as (keyof MachineRow)[]).map((key) => (
+                    {(["machineName","equipmentTypeName","regNo","maker","model","capacity","dimensions","year","note"] as (keyof MachineRow)[]).map((key) => (
                       <td key={key} className="px-2 py-1">
                         <input
                           type="text"

@@ -659,7 +659,7 @@ export default function WorkPlanEditor({ onBack }: { onBack?: () => void } = {})
             className="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all text-slate-500 hover:border-teal-300 hover:text-teal-600 hover:bg-teal-50"
             style={{ borderColor: "#e2e8f0" }}
           >
-            🚜 장비 관리대장
+            🚜 장비·기계 관리
           </Link>
           <Link
             href="/work-plan/permits"

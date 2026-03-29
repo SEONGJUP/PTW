@@ -3,7 +3,6 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { EquipmentType, CONSTRUCTION_EQUIPMENT_TYPES } from "./workPlanStore";
 
-export type EquipmentStatus = "active" | "maintenance" | "inactive";
 
 export interface InspectionRecord {
   id: string;
@@ -14,36 +13,60 @@ export interface InspectionRecord {
   notes: string;
 }
 
+/** 장비 투입 이력 (1회 투입 = 1 UsageLog, 직접입력/계획서 연동 모두 지원) */
+export interface UsageLog {
+  id: string;
+  source: "plan" | "manual";  // 출처: 작업계획서 연동 | 직접 입력
+  workPlanId?: string;         // 작업계획서 SavedCard ID (plan 출처일 때)
+  workPlanTitle: string;       // 작업명 / 작업계획서 제목
+  siteName: string;            // 현장명
+  location: string;            // 위치
+  startDate: string;           // 투입 시작일
+  endDate: string;             // 투입 종료일
+  operator: string;            // 운전원
+  note: string;                // 변동사항 / 비고
+  createdAt: string;
+}
+
 export interface EquipmentRecord {
   id: string;
 
   // 기본 정보
-  name: string;                     // 장비명 (자유 입력)
-  equipmentType: EquipmentType | string; // 건설기계 종류
-  model: string;                    // 모델명
-  manufacturer: string;             // 제조사
-  year: string;                     // 제조연도
-  serialNumber: string;             // 기계번호/차대번호
-  registrationNumber: string;       // 건설기계등록번호 (차량계)
+  name: string;
+  equipmentType: EquipmentType | string;
+  model: string;
+  manufacturer: string;
+  year: string;
+  serialNumber: string;
+  registrationNumber: string;
 
   // 제원
-  capacity: string;                 // 정격하중 / 정격출력 / 버킷용량 등
-  weight: string;                   // 자중 (ton)
-  dimensions: string;               // 제원 (길이×폭×높이)
-  enginePower: string;              // 엔진 출력
+  capacity: string;
+  weight: string;
+  dimensions: string;
+  enginePower: string;
+  workRadius: string;
 
   // 관리 정보
-  status: EquipmentStatus;
-  operatorName: string;             // 담당 운전원
-  operatorLicense: string;          // 면허 번호
+  operatorName: string;
+  operatorLicense: string;
   purchaseDate: string;
   lastInspectionDate: string;
   nextInspectionDate: string;
-  inspectionCycle: string;          // 점검 주기 (예: 6개월)
-  insuranceExpiry: string;          // 보험 만료일
+  inspectionCycle: string;
+  insuranceStart: string;
+  insuranceExpiry: string;
 
-  // 점검 이력
   inspectionHistory: InspectionRecord[];
+  usageLogs: UsageLog[];
+
+  // 관리대장 표 필드
+  workLocation: string;
+  qty: string;
+  inspectionTarget: string;  // "Y" | "N"
+  inspectionBasis: string;
+  safetyDevice: string;
+  accidentType: string;
 
   notes: string;
   createdAt: string;
@@ -53,12 +76,20 @@ export interface EquipmentRecord {
 export interface EquipmentRegistryStore {
   records: EquipmentRecord[];
 
-  addRecord: (data: Omit<EquipmentRecord, "id" | "createdAt" | "updatedAt" | "inspectionHistory">) => string;
-  updateRecord: (id: string, data: Partial<EquipmentRecord>) => void;
-  deleteRecord: (id: string) => void;
-  addInspection: (equipmentId: string, inspection: Omit<InspectionRecord, "id">) => void;
-  getByType: (type: EquipmentType | string) => EquipmentRecord[];
-  getActive: () => EquipmentRecord[];
+  addRecord:        (data: Omit<EquipmentRecord, "id" | "createdAt" | "updatedAt" | "inspectionHistory" | "usageLogs">) => string;
+  updateRecord:     (id: string, data: Partial<EquipmentRecord>) => void;
+  deleteRecord:     (id: string) => void;
+
+  addInspection:    (equipmentId: string, inspection: Omit<InspectionRecord, "id">) => void;
+  updateInspection: (equipmentId: string, inspectionId: string, data: Partial<Omit<InspectionRecord, "id">>) => void;
+  deleteInspection: (equipmentId: string, inspectionId: string) => void;
+
+  addUsageLog:      (equipmentId: string, log: Omit<UsageLog, "id" | "createdAt">) => void;
+  updateUsageLog:   (equipmentId: string, logId: string, data: Partial<Omit<UsageLog, "id" | "createdAt">>) => void;
+  deleteUsageLog:   (equipmentId: string, logId: string) => void;
+
+  getByType:   (type: EquipmentType | string) => EquipmentRecord[];
+  findByNumber:(regNo: string, serialNo?: string) => EquipmentRecord | undefined;
 }
 
 export function getEquipmentTypeLabel(type: EquipmentType | string): string {
@@ -76,14 +107,9 @@ export const useEquipmentRegistryStore = create<EquipmentRegistryStore>()(
       addRecord: (data) => {
         const id = `eq_${Date.now()}`;
         const now = new Date().toISOString();
-        const record: EquipmentRecord = {
-          ...data,
-          id,
-          inspectionHistory: [],
-          createdAt: now,
-          updatedAt: now,
-        };
-        set((s) => ({ records: [...s.records, record] }));
+        set((s) => ({
+          records: [...s.records, { ...data, id, inspectionHistory: [], usageLogs: [], createdAt: now, updatedAt: now }],
+        }));
         return id;
       },
 
@@ -99,18 +125,28 @@ export const useEquipmentRegistryStore = create<EquipmentRegistryStore>()(
         set((s) => ({ records: s.records.filter((r) => r.id !== id) }));
       },
 
+      // ── 점검이력 ──────────────────────────────────────────────────
       addInspection: (equipmentId, inspection) => {
-        const record: InspectionRecord = {
-          ...inspection,
-          id: `ins_${Date.now()}`,
-        };
+        const now = new Date().toISOString();
+        const record: InspectionRecord = { ...inspection, id: `ins_${Date.now()}` };
+        set((s) => ({
+          records: s.records.map((r) =>
+            r.id === equipmentId
+              ? { ...r, inspectionHistory: [record, ...r.inspectionHistory], lastInspectionDate: inspection.date, updatedAt: now }
+              : r
+          ),
+        }));
+      },
+
+      updateInspection: (equipmentId, inspectionId, data) => {
         set((s) => ({
           records: s.records.map((r) =>
             r.id === equipmentId
               ? {
                   ...r,
-                  inspectionHistory: [record, ...r.inspectionHistory],
-                  lastInspectionDate: inspection.date,
+                  inspectionHistory: r.inspectionHistory.map((i) =>
+                    i.id === inspectionId ? { ...i, ...data } : i
+                  ),
                   updatedAt: new Date().toISOString(),
                 }
               : r
@@ -118,13 +154,61 @@ export const useEquipmentRegistryStore = create<EquipmentRegistryStore>()(
         }));
       },
 
-      getByType: (type) => {
-        return get().records.filter((r) => r.equipmentType === type);
+      deleteInspection: (equipmentId, inspectionId) => {
+        set((s) => ({
+          records: s.records.map((r) =>
+            r.id === equipmentId
+              ? { ...r, inspectionHistory: r.inspectionHistory.filter((i) => i.id !== inspectionId), updatedAt: new Date().toISOString() }
+              : r
+          ),
+        }));
       },
 
-      getActive: () => {
-        return get().records.filter((r) => r.status === "active");
+      // ── 투입이력 ──────────────────────────────────────────────────
+      addUsageLog: (equipmentId, log) => {
+        const record: UsageLog = { ...log, id: `ul_${Date.now()}`, createdAt: new Date().toISOString() };
+        set((s) => ({
+          records: s.records.map((r) =>
+            r.id === equipmentId
+              ? { ...r, usageLogs: [record, ...(r.usageLogs ?? [])], updatedAt: new Date().toISOString() }
+              : r
+          ),
+        }));
       },
+
+      updateUsageLog: (equipmentId, logId, data) => {
+        set((s) => ({
+          records: s.records.map((r) =>
+            r.id === equipmentId
+              ? {
+                  ...r,
+                  usageLogs: (r.usageLogs ?? []).map((l) =>
+                    l.id === logId ? { ...l, ...data } : l
+                  ),
+                  updatedAt: new Date().toISOString(),
+                }
+              : r
+          ),
+        }));
+      },
+
+      deleteUsageLog: (equipmentId, logId) => {
+        set((s) => ({
+          records: s.records.map((r) =>
+            r.id === equipmentId
+              ? { ...r, usageLogs: (r.usageLogs ?? []).filter((l) => l.id !== logId), updatedAt: new Date().toISOString() }
+              : r
+          ),
+        }));
+      },
+
+      getByType:    (type)         => get().records.filter((r) => r.equipmentType === type),
+      findByNumber: (regNo, serialNo) =>
+        get().records.find((r) => {
+          if (regNo    && r.registrationNumber && r.registrationNumber === regNo)    return true;
+          if (serialNo && r.serialNumber       && r.serialNumber       === serialNo) return true;
+          return false;
+        }),
     }),
     {
       name: "ptw-equipment-registry",

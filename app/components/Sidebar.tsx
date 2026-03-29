@@ -9,7 +9,7 @@ const mainNav = [
     items: [
       { href: "/safety-board", label: "안전카드 게시판", icon: "🛡" },
       { href: "/approval", label: "작업계획·허가서 승인", icon: "✅" },
-      { href: "/work-plan/equipment", label: "장비 관리대장", icon: "🚜" },
+      { href: "/work-plan/equipment", label: "장비·기계 관리", icon: "🚜" },
       { href: "/work-plan/settings", label: "작업계획서 상세설정", icon: "⚙" },
       { href: "/work-plan/permit-settings", label: "작업허가서 상세설정", icon: "🔑" },
     ],
