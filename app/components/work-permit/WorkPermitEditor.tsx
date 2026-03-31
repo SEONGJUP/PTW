@@ -739,6 +739,9 @@ function PermitDetail({ permit, onClose, mode = "modal" }: { permit: WorkPermit;
   const [openSpecifics, setOpenSpecifics] = useState<Set<string>>(
     () => new Set(allTypes),
   );
+  const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
+  const toggleNote = (t: string) =>
+    setOpenNotes((prev) => { const next = new Set(prev); next.has(t) ? next.delete(t) : next.add(t); return next; });
   const toggleSpecificsGroup = (t: string) =>
     setOpenSpecifics((prev) => {
       const next = new Set(prev);
@@ -1188,6 +1191,31 @@ function PermitDetail({ permit, onClose, mode = "modal" }: { permit: WorkPermit;
                               />
                             </div>
                           )}
+                          {/* 기타 특이사항 */}
+                          <div className="border-t border-slate-50">
+                            <button
+                              type="button"
+                              onClick={() => toggleNote(typeId)}
+                              className="w-full flex items-center gap-1.5 px-4 py-2 text-left hover:bg-slate-50 transition-colors"
+                            >
+                              <span className="text-xs text-slate-400">{openNotes.has(typeId) ? "▲" : "▼"}</span>
+                              <span className="text-xs font-medium text-slate-500">기타 특이사항</span>
+                              {permit.specifics[`_note_${typeId}`] && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: PRIMARY_LIGHT, color: PRIMARY }}>입력됨</span>
+                              )}
+                            </button>
+                            {openNotes.has(typeId) && (
+                              <div className="px-4 pb-3">
+                                <textarea
+                                  rows={3}
+                                  className={`${inp} resize-none`}
+                                  placeholder="해당 유형에 대한 기타 특이사항, 추가 조치사항 등을 자유롭게 입력하세요"
+                                  value={permit.specifics[`_note_${typeId}`] ?? ""}
+                                  onChange={(e) => upd("specifics", { ...permit.specifics, [`_note_${typeId}`]: e.target.value })}
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

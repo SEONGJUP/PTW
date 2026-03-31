@@ -91,7 +91,7 @@ const CSS_CLASSES = [
   { cls: "ptw-section-card-body",   desc: "섹션 본문 (p-4 padding)" },
 ];
 
-type TabId = "overview" | "schema" | "checklist" | "specifics" | "equipment-gas" | "taxonomy" | "ui-guide";
+type TabId = "overview" | "schema" | "checklist" | "specifics" | "equipment-gas" | "taxonomy" | "ui-guide" | "changelog";
 
 export default function DeveloperPage() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
@@ -174,6 +174,7 @@ export default function DeveloperPage() {
     { id: "equipment-gas", label: "건설기계 & 가스",  icon: "⚙️" },
     { id: "taxonomy",      label: "작업분류 체계",    icon: "🗂" },
     { id: "ui-guide",      label: "UI 가이드",        icon: "🎨" },
+    { id: "changelog",     label: "개선 이력",        icon: "📜" },
   ];
 
   return (
@@ -701,6 +702,121 @@ export default function DeveloperPage() {
                 <p><strong>카드 border-radius:</strong> rounded-2xl (상위), rounded-xl (내부)</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ══ 개선 이력 ══ */}
+        {activeTab === "changelog" && (
+          <div className="max-w-3xl space-y-4">
+            <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+              법적 근거 기반 개선 이력입니다. 각 항목은 되돌리거나 수정 가능합니다.
+            </div>
+
+            {([
+              {
+                date: "2026-04-01",
+                category: "법적 준수",
+                title: "안전 체크리스트 법적 항목 보완",
+                law: "산업안전보건법 제38조·제41조·제42조·제43조·제69조·제70조·제118조·제618조·제619조",
+                items: [
+                  "confined_space: 유해가스(CO·CO₂·H₂S) 농도 측정 항목 추가 (O₂만으로 불충분)",
+                  "confined_space: 밀폐공간 입구 경고표지 부착 확인 추가",
+                  "confined_space: 대기자(관찰자) 지정·상주 확인, 구조용 로프·송기마스크 작동 확인 추가",
+                  "excavation: 흙막이 지보공 설치 상태, 2인1조·감시자 배치, 인접 구조물 변위 계측 추가",
+                  "working_at_height: 추락방지망 450kg 기준, 강풍(10m/s) 중단 기준 명시",
+                  "hot_work: 용접·장비 상태 점검, 작업 후 1시간 잔열 감시 추가",
+                  "electrical: 절연장비 유효성 확인, 작업 후 전원 정상화 확인 추가",
+                  "heavy_load: 달기기구 정기검사(2년) 유효기간, 인양 경로 하부 대피 확인 추가",
+                  "night_overtime: 작업면 조도 150 Lux 기준 명시",
+                  "short_time: 인근 작업 충돌 위험 확인 추가",
+                  "general: 응급처치함 위치 확인 추가",
+                  "COMMON: 응급처치함 비치, 기상 악화 대비 계획 수립 추가",
+                ],
+                file: "store/workPermitStore.ts — PERMIT_SAFETY_CHECKLIST, COMMON_SAFETY_MEASURES",
+              },
+              {
+                date: "2026-04-01",
+                category: "데이터 수집",
+                title: "허가서 유형별 확인사항 필드 보완",
+                law: "산업안전보건법 기술기준 제37조·제38조 및 각 유형별 고용노동부 고시",
+                items: [
+                  "hot_work: 화기감시자 자격·교육이수(fire_watch_cert), 소화기 종류·수량(extinguisher_info) 추가",
+                  "electrical: 작업자 자격증(worker_qualification), 접지·방전 확인자(grounding_confirmed) 추가",
+                  "working_at_height: 2인1조 확인자(two_person_confirmed), 기상 확인(weather_check) 추가",
+                  "excavation: 흙막이 공법(shoring_method), 상시 감시자(monitoring_person) 추가",
+                  "confined_space: 대기자 성명(standby_person_name), 가스측정자(gas_measured_by) 추가",
+                  "heavy_load: 달기기구 검사 유효기간(rigging_inspection_date), 신호수 성명(signal_person_name) 추가",
+                  "night_overtime: 작업면 조도(lighting_lux) 추가",
+                  "short_time: 인근 작업 충돌 확인자(adjacent_work_checked) 추가",
+                ],
+                file: "store/workPermitStore.ts — PERMIT_SPECIFICS_FIELDS",
+              },
+              {
+                date: "2026-04-01",
+                category: "섹션 구성",
+                title: "정식(full) 섹션 프리셋 법적 보완",
+                law: "산업안전보건법 제38조, 고용노동부 고시 별표4",
+                items: [
+                  "전체 full_* 프리셋에 work_description(작업 설명) 추가",
+                  "full_construction_equipment, full_excavation, full_hot_work, full_working_at_height, full_general에 work_environment(작업환경) 추가",
+                  "full_excavation에 electrical_safety(전기안전작업계획 [법정]) 추가 — 매설 전기시설 대응",
+                  "full_confined_space에 equipment_info(장비), pre_survey(사전조사) 추가 — 산소측정기·환기설비",
+                  "full_lifting, full_working_at_height에 drawing(도면) 추가",
+                  "안전교육(training) → 비상연락망(emergency_contact) 앞으로 정렬 통일",
+                ],
+                file: "store/workPlanStore.ts — DEFAULT_SECTION_PRESETS",
+              },
+              {
+                date: "2026-04-01",
+                category: "작업 분류",
+                title: "분류 속성 보완",
+                law: "해당 없음 (UX 개선)",
+                items: [
+                  "sub_9_5(시간특수 작업): recommendedWorkAttrIds ['wa_운반','wa_설치'] 추가, 인접작업 위험속성 추가, aliases 추가",
+                  "4-4. 차량탑재형 고소작업대(스카이) 서브카테고리 신규 추가 (sub_4_4)",
+                  "eq_sky_lift 장비 추가 (grp_aerial_lift 내, legacyType: truck)",
+                ],
+                file: "store/workPlanTaxonomy.ts — WORK_SUBCATEGORIES, EQUIPMENT_GROUPS",
+              },
+              {
+                date: "2026-04-01",
+                category: "UI 개선",
+                title: "작업계획서 설정 UI 정리",
+                law: "해당 없음",
+                items: [
+                  "설정 페이지: 기타 장비 직접입력 섹션 제거",
+                  "허가서 상세설정: 확인사항 필드 추가/삭제/표시 제거 (읽기 전용으로 단순화)",
+                  "작업허가서 유형별 확인사항: 각 유형별 기타 특이사항 접이식 입력 추가",
+                  "도면·기타첨부파일 섹션을 해체계획[법정] 아래로 이동",
+                  "서명 및 결재를 설정 화면에서 제거 (항상 포함되므로 불필요)",
+                  "비상연락망·안전교육 순서 교체, 매설물확인·흙막이공법 순서 교체",
+                ],
+                file: "settings/page.tsx, permit-settings/page.tsx, WorkPermitEditor.tsx",
+              },
+            ] as const).map((entry, i) => (
+              <div key={i} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b bg-slate-50 flex items-center gap-3">
+                  <span className="text-xs font-mono text-slate-400">{entry.date}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                    style={{ background: entry.category === "법적 준수" ? "#fef9c3" : entry.category === "데이터 수집" ? "#e0f2fe" : entry.category === "섹션 구성" ? "#f0fdf4" : "#f3f4f6", color: entry.category === "법적 준수" ? "#a16207" : entry.category === "데이터 수집" ? "#0369a1" : entry.category === "섹션 구성" ? "#166534" : "#374151" }}>
+                    {entry.category}
+                  </span>
+                  <span className="text-sm font-bold text-slate-700">{entry.title}</span>
+                </div>
+                <div className="px-4 py-3 space-y-2">
+                  <p className="text-xs text-slate-400"><span className="font-semibold text-slate-500">법적 근거:</span> {entry.law}</p>
+                  <ul className="space-y-1">
+                    {entry.items.map((item, j) => (
+                      <li key={j} className="text-xs text-slate-600 flex gap-2">
+                        <span className="text-slate-300 flex-shrink-0">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs font-mono text-teal-600 mt-1">📄 {entry.file}</p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

@@ -59,12 +59,12 @@ export const LEGALLY_REQUIRED_PERMIT_TYPES: WorkPermitType[] = [
 // 유형별 안전 체크리스트 (참고자료 기반)
 export const PERMIT_SAFETY_CHECKLIST: Record<WorkPermitType, string[]> = {
   general: [
-    // "작업 구역 구획 및 표지판 설치" → COMMON_SAFETY_MEASURES의 "작업구역 설정 (출입경고 표지)"와 동일, 공통으로 통일
     "개인보호구 지급 및 착용 확인",
     "작업 전 TBM(Tool Box Meeting) 실시",
     "비상연락망 공유 완료",
     "작업허가서 게시 여부",
     "작업장 정리정돈 여부",
+    "응급처치함 위치 확인",                          // 산안법 제10조
   ],
   hot_work: [
     "가연성 가스농도 측정 유무",
@@ -73,50 +73,64 @@ export const PERMIT_SAFETY_CHECKLIST: Record<WorkPermitType, string[]> = {
     "역화·전격방지기 이상 유무",
     "압력조정기 부착 및 이상 유무",
     "주위 가연물 제거 유무",
+    "용접·절단 장비 및 호스 상태 점검",              // 산안법 기술기준 제37조제3항
+    "작업 종료 후 잔열 제거 재확인 (1시간 감시)",     // 화재 재발 방지
   ],
   electrical: [
-    // "작업안내 표지판 설치 유무" → COMMON의 "작업구역 설정 (출입경고 표지)"로 통일
     "작업자 자격여부 확인",
     "시건(Lockout) 확인",
     "접지 및 방전 유무",
     "정전작업 전로 개폐 시건 유무",
     "주전원 차단 유무 (활선작업)",
+    "활선 작업 시 절연장비 유효성 확인",              // 산안법 기술기준 제38조
+    "작업 완료 후 전원 정상화 및 잠금 해제 확인",     // LOTO 복귀 절차
   ],
   working_at_height: [
     "2인 1조 작업 유무",
-    "추락위험 방호망 설치 상태",
+    "추락위험 방호망 설치 상태 (450kg 이상 기준)",    // 산안법 별표 기준하중
     "이동식 비계 안전인증 유무",
     "안전모·안전대(2m 이상) 착용 상태",
     "안전난간대 설치(90cm 이상)",
     "사다리 아우트리거 설치 유무",
+    "강풍(10m/s 이상) 시 작업 중단 기준 숙지",       // 산안법 제43조 기상 조건
   ],
   excavation: [
     "매설배관 파악 유무(도면 확인)",
-    "출입금지 구역 설정 및 바리케이드 설치",  // 기존 "출입금지 표지판 설치 유무" + "작업장 주변 바리케이드 설치" 통일
+    "출입금지 구역 설정 및 바리케이드 설치",
     "매설전선 전원 차단 여부",
     "제어용 케이블 안전성 유무",
     "연락수단 적정 유무",
+    "흙막이 지보공 설치 및 상태 확인",               // 산안법 제69조
+    "2인 1조 및 상시 감시자 배치 유무",               // 산안법 제70조
+    "인접 구조물·지반 변위 계측 확인",               // 붕괴 위험 예방
   ],
   confined_space: [
     "산소농도 측정 (18%~23.5%)",
-    "2인 1조 작업 유무",                   // working_at_height와 동일 → buildMergedChecklist의 Set dedup 처리
+    "유해가스 농도 측정 (CO·CO₂·H₂S)",             // 산안법 제619조 (O₂만으로 불충분)
+    "2인 1조 작업 유무",
     "환기 및 배기장치 가동 유무",
-    "출입금지 구역 설정 및 바리케이드 설치", // excavation과 통일
+    "출입금지 구역 설정 및 바리케이드 설치",
     "호흡용 보호구 착용 유무",
     "작업지휘자 배치 유무",
+    "밀폐공간 입구 경고표지 부착",                   // 산안법 제618조
+    "대기자(관찰자) 지정 및 상주 확인",              // 구조 대기
+    "구조용 로프·송기마스크 작동 확인",              // 산안법 제619조
   ],
   heavy_load: [
     "감독자 지정 및 상주 유무",
     "로프 상태 확인 (파단·소손)",
     "작업 신호수 배치 유무",
     "적재물 이동경로 적정성 확인",
-    "출입금지 구역 설정 및 바리케이드 설치", // 기존 "관계자 외 출입통제 조치"를 동일 표현으로 통일
+    "출입금지 구역 설정 및 바리케이드 설치",
     "적재 중량 초과 유무",
+    "달기기구 정기검사 유효기간 확인",               // 산안법 제41조 (2년 주기)
+    "인양 경로 하부 작업자 대피 확인",               // 산안법 제42조
   ],
   night_overtime: [
     "야간·조출·휴일 작업 승인 여부 확인",
     "작업지휘자·관리자 안전기준 숙지",
     "조명 및 시야 확보 상태 확인",
+    "작업면 조도 기준 확인 (150 Lux 이상)",          // 산안법 제118조
     "건설장비 법적 방호장치 설치",
     "위험요인 개선대책 수립",
     "비상연락체계 가동 여부",
@@ -127,12 +141,13 @@ export const PERMIT_SAFETY_CHECKLIST: Record<WorkPermitType, string[]> = {
     "보호구 착용 상태 확인",
     "위험요인 사전 파악 및 통보",
     "작업 완료 후 현장 복구 확인",
+    "인근 진행 중인 타 작업 충돌 위험 확인",         // 복합 작업 시 간섭
   ],
 };
 
 // 공통 안전조치 항목 (모든 유형에 공통)
 export const COMMON_SAFETY_MEASURES: string[] = [
-  "작업구역 설정 (출입경고 표지)",           // general의 "작업 구역 구획 및 표지판 설치", electrical의 "작업안내 표지판 설치 유무", night_overtime의 "안전표지판 설치" 통일
+  "작업구역 설정 (출입경고 표지)",
   "환기장비",
   "조명장비",
   "소화기",
@@ -140,59 +155,75 @@ export const COMMON_SAFETY_MEASURES: string[] = [
   "안전교육 실시",
   "운전요원 입회",
   "MSDS 비치·교육, 비상대응요령 숙지",
+  "응급처치함 비치 여부",                   // 산안법 제10조
+  "기상 악화 대비 작업 중단 계획 수립",     // 강풍·폭우·낙뢰 대응
 ];
 
 // 유형별 특화 확인사항 기본 필드 정의
 export const PERMIT_SPECIFICS_FIELDS: Record<string, { key: string; label: string }[]> = {
   general: [],
   hot_work: [
-    { key: "welding_type",    label: "용접/절단 방식" },
-    { key: "gas_type",        label: "사용 가스 종류" },
-    { key: "permit_validity", label: "허가 유효기간" },
-    { key: "fire_watch_name", label: "화기감시자 성명" },
+    { key: "welding_type",       label: "용접/절단 방식" },
+    { key: "gas_type",           label: "사용 가스 종류" },
+    { key: "permit_validity",    label: "허가 유효기간" },
+    { key: "fire_watch_name",    label: "화기감시자 성명" },
+    { key: "fire_watch_cert",    label: "화기감시자 자격·교육이수" },  // 산안법 기술기준 제37조
+    { key: "extinguisher_info",  label: "소화기 종류·수량" },
   ],
   electrical: [
-    { key: "circuit_location",  label: "차단 회로 위치 (제어실/현장)" },
-    { key: "lockout_confirmed", label: "시건(Lockout) 확인자" },
-    { key: "voltage_level",     label: "전압 등급" },
-    { key: "restoration_time",  label: "전원복구 예정시간" },
+    { key: "circuit_location",     label: "차단 회로 위치 (제어실/현장)" },
+    { key: "lockout_confirmed",    label: "시건(Lockout) 확인자" },
+    { key: "voltage_level",        label: "전압 등급" },
+    { key: "restoration_time",     label: "전원복구 예정시간" },
+    { key: "worker_qualification", label: "작업자 자격증 종류" },      // 전기기사·산업기사 등
+    { key: "grounding_confirmed",  label: "접지·방전 확인자" },
   ],
   working_at_height: [
-    { key: "max_height",        label: "최대 작업 높이(m)" },
-    { key: "scaffold_type",     label: "발판/비계 종류" },
-    { key: "permit_validity",   label: "허가 유효기간" },
-    { key: "fall_net_installed",label: "추락방지망 설치 여부" },
+    { key: "max_height",           label: "최대 작업 높이(m)" },
+    { key: "scaffold_type",        label: "발판/비계 종류" },
+    { key: "permit_validity",      label: "허가 유효기간" },
+    { key: "fall_net_installed",   label: "추락방지망 설치 여부" },
+    { key: "two_person_confirmed", label: "2인1조 확인자" },
+    { key: "weather_check",        label: "작업 전 기상 확인 (풍속·강수)" }, // 산안법 제43조
   ],
   excavation: [
-    { key: "excavation_depth",   label: "굴착 깊이(m)" },
-    { key: "soil_type",          label: "토질 종류" },
-    { key: "underground_utility",label: "매설물 확인 (가스·전기·통신)" },
-    { key: "groundwater_level",  label: "지하수위" },
+    { key: "excavation_depth",    label: "굴착 깊이(m)" },
+    { key: "soil_type",           label: "토질 종류" },
+    { key: "underground_utility", label: "매설물 확인 (가스·전기·통신)" },
+    { key: "groundwater_level",   label: "지하수위" },
+    { key: "shoring_method",      label: "흙막이 공법" },              // 산안법 제69조
+    { key: "monitoring_person",   label: "상시 감시자 성명" },         // 산안법 제70조
   ],
   confined_space: [
     { key: "space_name",          label: "밀폐공간 명칭/번호" },
     { key: "permit_validity",     label: "허가 유효기간" },
     { key: "communication_means", label: "통신수단" },
     { key: "rescue_equipment",    label: "구명장구 (줄, 송기마스크)" },
+    { key: "standby_person_name", label: "대기자(관찰자) 성명" },      // 산안법 제619조
+    { key: "gas_measured_by",     label: "가스측정자 성명" },
   ],
   heavy_load: [
-    { key: "load_weight",      label: "중량물 중량(ton)" },
-    { key: "load_dimensions",  label: "중량물 규격" },
-    { key: "lifting_equipment",label: "양중 장비 종류" },
-    { key: "movement_route",   label: "이동 경로" },
+    { key: "load_weight",               label: "중량물 중량(ton)" },
+    { key: "load_dimensions",           label: "중량물 규격" },
+    { key: "lifting_equipment",         label: "양중 장비 종류" },
+    { key: "movement_route",            label: "이동 경로" },
+    { key: "rigging_inspection_date",   label: "달기기구 검사 유효기간" }, // 산안법 제41조
+    { key: "signal_person_name",        label: "신호수 성명" },
   ],
   night_overtime: [
-    { key: "work_type_detail", label: "작업 구분 (야간/조출/휴일)" },
-    { key: "supervisor_name",  label: "작업관리자/지휘자 성명" },
-    { key: "team_count",       label: "작업팀 인원" },
-    { key: "overtime_reason",  label: "야간/조출 사유" },
+    { key: "work_type_detail",  label: "작업 구분 (야간/조출/휴일)" },
+    { key: "supervisor_name",   label: "작업관리자/지휘자 성명" },
+    { key: "team_count",        label: "작업팀 인원" },
+    { key: "overtime_reason",   label: "야간/조출 사유" },
+    { key: "lighting_lux",      label: "작업면 조도(Lux)" },           // 산안법 제118조 150Lux 이상
   ],
   short_time: [
-    { key: "short_work_scope",  label: "작업 내용 및 범위" },
-    { key: "supervisor_name",   label: "작업관리자 성명" },
-    { key: "team_count",        label: "작업팀 인원" },
-    { key: "planned_duration",  label: "예정 작업시간" },
-    { key: "short_time_reason", label: "단시간 작업 사유" },
+    { key: "short_work_scope",      label: "작업 내용 및 범위" },
+    { key: "supervisor_name",       label: "작업관리자 성명" },
+    { key: "team_count",            label: "작업팀 인원" },
+    { key: "planned_duration",      label: "예정 작업시간" },
+    { key: "short_time_reason",     label: "단시간 작업 사유" },
+    { key: "adjacent_work_checked", label: "인근 작업 충돌 확인자" },
   ],
 };
 

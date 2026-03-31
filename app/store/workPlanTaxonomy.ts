@@ -174,6 +174,14 @@ export const WORK_SUBCATEGORIES: WPSubcategory[] = [
     recommendedWorkAttrIds: ["wa_설치", "wa_해체"],
     recommendedRiskAttrIds: ["ra_고소작업", "ra_개구부", "ra_인접작업"],
   },
+  {
+    id: "sub_4_4", num: "4-4", categoryId: "cat_4",
+    label: "차량탑재형 고소작업대(스카이)",
+    aliases: ["스카이차", "스카이 차량", "차량형 고소작업대", "sky lift", "skytruck"],
+    recommendedEquipmentIds: ["eq_sky_lift"],
+    recommendedWorkAttrIds: ["wa_설치", "wa_해체", "wa_운반"],
+    recommendedRiskAttrIds: ["ra_고소작업", "ra_개구부", "ra_인접작업", "ra_중량물"],
+  },
   // ── 5. 콘크리트·타설 ──────────────────────────────────────────
   {
     id: "sub_5_1", num: "5-1", categoryId: "cat_5",
@@ -308,9 +316,10 @@ export const WORK_SUBCATEGORIES: WPSubcategory[] = [
   {
     id: "sub_9_5", num: "9-5", categoryId: "cat_9",
     label: "시간특수 작업",
+    aliases: ["야간작업", "조출작업", "휴일작업", "야간조출", "특근"],
     recommendedEquipmentIds: [],
-    recommendedWorkAttrIds: [],
-    recommendedRiskAttrIds: ["ra_야간", "ra_휴일"],
+    recommendedWorkAttrIds: ["wa_운반", "wa_설치"],
+    recommendedRiskAttrIds: ["ra_야간", "ra_휴일", "ra_인접작업"],
   },
   {
     id: "sub_9_6", num: "9-6", categoryId: "cat_9",
@@ -347,7 +356,7 @@ export const WORK_SUBCATEGORIES: WPSubcategory[] = [
     id: "sub_10_3", num: "10-3", categoryId: "cat_10",
     label: "차량계 건설기계 사용 작업",
     articleRef: "제38조 제1항 제3호",
-    recommendedEquipmentIds: ["eq_excavator", "eq_bulldozer", "eq_grader", "eq_loader", "eq_roller"],
+    recommendedEquipmentIds: ["eq_excavator", "eq_loader", "eq_roller"],
     recommendedWorkAttrIds: ["wa_굴착", "wa_운반"],
     recommendedRiskAttrIds: ["ra_인접작업"],
   },
@@ -460,19 +469,33 @@ export interface EquipmentGroup {
   items: EquipmentItem[];
 }
 
+// 고용노동부 작업계획서 서식 기준 9종
 export const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   {
-    id: "grp_A", label: "운반장비", icon: "🚛",
+    id: "grp_truck", label: "트럭", icon: "🚛",
     items: [
-      { id: "eq_dump",       label: "덤프트럭",    legacyType: "truck" },
-      { id: "eq_cargo",      label: "카고트럭",    legacyType: "truck" },
-      { id: "eq_forklift",   label: "지게차" },
-      { id: "eq_loader",     label: "로더",        legacyType: "loader" },
-      { id: "eq_mixer",      label: "레미콘/믹서트럭" },
+      { id: "eq_dump",  label: "덤프트럭",        legacyType: "truck" },
+      { id: "eq_cargo", label: "카고트럭",        legacyType: "truck" },
+      { id: "eq_mixer", label: "레미콘/믹서트럭", legacyType: "truck" },
     ],
   },
   {
-    id: "grp_B", label: "양중장비", icon: "🏗",
+    id: "grp_excavator", label: "굴착기", icon: "⛏️",
+    items: [
+      { id: "eq_excavator", label: "굴착기(백호)", legacyType: "excavator" },
+    ],
+  },
+  {
+    id: "grp_aerial_lift", label: "고소작업대", icon: "🪜",
+    items: [
+      { id: "eq_scissors_lift", label: "시저 리프트",           legacyType: "aerial_lift" },
+      { id: "eq_boom_lift",     label: "붐 리프트",             legacyType: "aerial_lift" },
+      { id: "eq_gondola",       label: "곤돌라",                 legacyType: "aerial_lift" },
+      { id: "eq_sky_lift",      label: "차량탑재형 고소작업대(스카이)", legacyType: "truck" },
+    ],
+  },
+  {
+    id: "grp_crane", label: "크레인", icon: "🏗",
     items: [
       { id: "eq_tower_crane",  label: "타워크레인",   legacyType: "crane" },
       { id: "eq_mobile_crane", label: "이동식크레인", legacyType: "crane" },
@@ -480,35 +503,34 @@ export const EQUIPMENT_GROUPS: EquipmentGroup[] = [
     ],
   },
   {
-    id: "grp_C", label: "굴착·토공장비", icon: "⛏️",
+    id: "grp_concrete_pump", label: "콘크리트펌프카", icon: "🪣",
     items: [
-      { id: "eq_excavator", label: "굴착기(백호)", legacyType: "excavator" },
-      { id: "eq_bulldozer", label: "불도저",       legacyType: "bulldozer" },
-      { id: "eq_grader",    label: "모터그레이더", legacyType: "grader" },
-      { id: "eq_roller",    label: "롤러",         legacyType: "roller" },
-      { id: "eq_scraper",   label: "스크레이퍼",   legacyType: "scraper" },
+      { id: "eq_pump_car", label: "콘크리트펌프카", legacyType: "concrete_pump" },
     ],
   },
   {
-    id: "grp_D", label: "고소·접근장비", icon: "🪜",
-    items: [
-      { id: "eq_scissors_lift", label: "시저 리프트" },
-      { id: "eq_boom_lift",     label: "붐 리프트" },
-      { id: "eq_gondola",       label: "곤돌라" },
-    ],
-  },
-  {
-    id: "grp_E", label: "타설장비", icon: "🪣",
-    items: [
-      { id: "eq_pump_car", label: "콘크리트펌프카" },
-      // eq_mixer는 grp_A와 중복이지만 id 동일 → UX에서 중복선택 방지
-    ],
-  },
-  {
-    id: "grp_F", label: "기초장비", icon: "🔩",
+    id: "grp_pile_driver", label: "항타기", icon: "🔨",
     items: [
       { id: "eq_pile_driver", label: "항타기/항발기", legacyType: "pile_driver" },
-      { id: "eq_borer",       label: "천공기/오거" },
+      { id: "eq_borer",       label: "천공기/오거",   legacyType: "pile_driver" },
+    ],
+  },
+  {
+    id: "grp_forklift", label: "지게차", icon: "🔩",
+    items: [
+      { id: "eq_forklift", label: "지게차", legacyType: "forklift" },
+    ],
+  },
+  {
+    id: "grp_loader", label: "로더", icon: "🏗️",
+    items: [
+      { id: "eq_loader", label: "로더", legacyType: "loader" },
+    ],
+  },
+  {
+    id: "grp_roller", label: "롤러", icon: "🛞",
+    items: [
+      { id: "eq_roller", label: "롤러", legacyType: "roller" },
     ],
   },
 ];
@@ -524,13 +546,8 @@ export const EQUIPMENT_MAP: Record<string, EquipmentItem> = (() => {
   return m;
 })();
 
-/** eq_mixer를 그룹 E에도 가상 노출 (실제 데이터는 grp_A 의 eq_mixer와 같은 id) */
-export const EQUIPMENT_GROUPS_DISPLAY: EquipmentGroup[] = EQUIPMENT_GROUPS.map((g) => {
-  if (g.id === "grp_E") {
-    return { ...g, items: [...g.items, EQUIPMENT_MAP["eq_mixer"]] };
-  }
-  return g;
-});
+/** EQUIPMENT_GROUPS_DISPLAY = EQUIPMENT_GROUPS (중복 표시 불필요) */
+export const EQUIPMENT_GROUPS_DISPLAY: EquipmentGroup[] = EQUIPMENT_GROUPS;
 
 // ══════════════════════════════════════════════════════════════════
 // 작업속성 / 위험속성
@@ -600,7 +617,7 @@ export function toLegacyPlanCategory(subcategoryId: string): string {
     sub_2_1: "lifting",                sub_2_2: "lifting",        sub_2_3: "lifting",       sub_2_4: "lifting",
     sub_3_1: "construction_equipment", sub_3_2: "construction_equipment", sub_3_3: "construction_equipment",
     sub_3_4: "excavation",             sub_3_5: "excavation",
-    sub_4_1: "working_at_height",      sub_4_2: "working_at_height", sub_4_3: "working_at_height",
+    sub_4_1: "working_at_height",      sub_4_2: "working_at_height", sub_4_3: "working_at_height", sub_4_4: "working_at_height",
     sub_5_1: "construction_equipment", sub_5_2: "construction_equipment", sub_5_3: "construction_equipment",
     sub_6_1: "construction_equipment", sub_6_2: "construction_equipment", sub_6_3: "construction_equipment",
     sub_7_1: "general",                sub_7_2: "general",        sub_7_3: "general",       sub_7_4: "general",

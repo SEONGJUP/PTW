@@ -311,14 +311,14 @@ export const EQUIPMENT_SPECIFIC_SECTIONS: Record<EquipmentType, Omit<Section, "o
 // ─── 정식/약식별 카테고리 기본 섹션 preset ─────────────────────────
 // key: "${profile}_${category}"  value: enabled section IDs
 export const DEFAULT_SECTION_PRESETS: Record<string, string[]> = {
-  // ── 정식 ──────────────────────────────────────────────────────
-  full_construction_equipment: ["overview","equipment_info","work_personnel","risk","safety_checklist","emergency_contact","training","signature"],
-  full_lifting:                ["overview","heavy_goods","equipment_info","work_personnel","risk","safety_checklist","emergency_contact","training","pre_survey","signature"],
-  full_excavation:             ["overview","equipment_info","pre_survey","work_personnel","risk","safety_checklist","emergency_contact","training","drawing","signature"],
-  full_hot_work:               ["overview","work_personnel","risk","safety_checklist","chemical_ops","emergency_contact","training","signature"],
-  full_confined_space:         ["overview","work_personnel","risk","safety_checklist","emergency_contact","training","signature"],
-  full_working_at_height:      ["overview","equipment_info","work_personnel","risk","safety_checklist","emergency_contact","training","signature"],
-  full_general:                ["overview","work_personnel","risk","safety_checklist","emergency_contact","signature"],
+  // ── 정식 (법적 필요 섹션 포함) ────────────────────────────────
+  full_construction_equipment: ["overview","work_description","work_environment","equipment_info","work_personnel","risk","safety_checklist","training","emergency_contact","signature"],
+  full_lifting:                ["overview","work_description","heavy_goods","equipment_info","work_personnel","risk","safety_checklist","training","emergency_contact","pre_survey","drawing","signature"],
+  full_excavation:             ["overview","work_description","work_environment","equipment_info","pre_survey","electrical_safety","work_personnel","risk","safety_checklist","training","emergency_contact","drawing","signature"],
+  full_hot_work:               ["overview","work_description","work_environment","work_personnel","risk","safety_checklist","chemical_ops","training","emergency_contact","signature"],
+  full_confined_space:         ["overview","work_description","equipment_info","pre_survey","work_personnel","risk","safety_checklist","training","emergency_contact","signature"],
+  full_working_at_height:      ["overview","work_description","work_environment","equipment_info","work_personnel","risk","safety_checklist","training","emergency_contact","drawing","signature"],
+  full_general:                ["overview","work_description","work_environment","work_personnel","risk","safety_checklist","training","emergency_contact","signature"],
   // ── 약식 (법적 최소) ───────────────────────────────────────────
   lite_construction_equipment: ["overview","equipment_info","risk","safety_checklist","signature"],
   lite_lifting:                ["overview","heavy_goods","equipment_info","risk","safety_checklist","signature"],

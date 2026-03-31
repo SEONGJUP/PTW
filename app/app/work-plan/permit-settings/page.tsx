@@ -289,53 +289,6 @@ export default function PermitSettingsPage() {
 
               <div className="p-5 space-y-6">
 
-                {/* ── 확인사항 필드 ── */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm font-bold text-slate-700">📝 확인사항 필드</span>
-                    <span className="text-xs text-slate-400">{effectiveSpecifics.length}개</span>
-                    {isSfOverridden && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "#fef9c3", color: "#a16207" }}>커스텀 적용중</span>}
-                  </div>
-                  <div className="rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-50">
-                    {effectiveSpecifics.map((f) => {
-                      const isDefault = defaultSpecifics.some(d => d.key === f.key);
-                      return (
-                        <div key={f.key} className="flex items-center gap-3 px-4 py-2.5"
-                          style={{ background: isDefault ? "white" : `${PRIMARY}04` }}>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-slate-700">{f.label}</p>
-                            <p className="text-xs text-slate-400 font-mono">{f.key}</p>
-                          </div>
-                          {!isDefault && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: `${PRIMARY}15`, color: PRIMARY }}>추가됨</span>
-                          )}
-                          <button onClick={() => removeSfField(f.key)}
-                            className="text-slate-300 hover:text-red-400 text-sm flex-shrink-0">✕</button>
-                        </div>
-                      );
-                    })}
-                    {effectiveSpecifics.length === 0 && (
-                      <div className="px-4 py-4 text-center text-xs text-slate-400">확인사항 필드가 없습니다</div>
-                    )}
-                  </div>
-                  <div className="mt-3 rounded-xl border border-dashed border-slate-200 p-3" style={{ background: "#f8fafc" }}>
-                    <p className="text-xs font-semibold text-slate-500 mb-2">➕ 필드 직접 추가</p>
-                    <div className="space-y-2">
-                      <input value={sfLabel} onChange={(e) => setSfLabel(e.target.value)}
-                        placeholder="필드명 (예: 화기감시자 성명)"
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-400" />
-                      <div className="flex gap-2">
-                        <input value={sfKey} onChange={(e) => setSfKey(e.target.value)}
-                          placeholder="키 (선택, 미입력시 자동생성)"
-                          className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-teal-400" />
-                        <button onClick={addSfField} disabled={!sfLabel.trim()}
-                          className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white flex-shrink-0"
-                          style={{ background: sfLabel.trim() ? PRIMARY : "#cbd5e1" }}>추가</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
                 {/* ── 체크리스트 ── */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">

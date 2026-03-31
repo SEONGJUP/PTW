@@ -720,39 +720,6 @@ export default function WorkPlanSettingsPage() {
                       })}
                     </div>
 
-                      {/* 기타 직접입력 */}
-                      <div className="rounded-xl border border-dashed border-slate-200 p-4" style={{ background: "#f8fafc" }}>
-                        <p style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>➕ 기타 장비 직접입력</p>
-                        {(effective.customEquipmentLabels?.length ?? 0) > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mb-3">
-                            {(effective.customEquipmentLabels ?? []).map((label, i) => (
-                              <span key={i} className="flex items-center gap-1 rounded-full" style={{ fontSize: 12, padding: "5px 12px", background: PRIMARY, color: "white" }}>
-                                {label}
-                                <button onClick={() => removeCustomEqLabel(i)} style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>✕</button>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={customEqInput}
-                            onChange={(e) => setCustomEqInput(e.target.value)}
-                            placeholder="장비명 입력 후 Enter 또는 추가 버튼"
-                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomEqLabel(); } }}
-                            className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg outline-none focus:border-teal-400"
-                            style={{ fontSize: 12 }}
-                          />
-                          <button
-                            onClick={addCustomEqLabel}
-                            disabled={!customEqInput.trim() || !subId}
-                            className="rounded-lg font-semibold text-white"
-                            style={{ fontSize: 12, padding: "6px 14px", background: customEqInput.trim() && subId ? PRIMARY : "#cbd5e1", cursor: customEqInput.trim() && subId ? "pointer" : "not-allowed" }}
-                          >
-                            추가
-                          </button>
-                        </div>
-                      </div>
                   </section>
 
                   {/* 현재 기본값 요약 */}
