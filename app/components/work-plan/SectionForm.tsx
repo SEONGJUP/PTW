@@ -131,8 +131,6 @@ function OverviewForm() {
   const update = (key: string, value: string) =>
     updateFormData("overview", { ...data, [key]: value });
 
-  const [showPurpose, setShowPurpose] = React.useState(!!(data.purpose));
-  const [showEnv, setShowEnv] = React.useState(!!(data.workEnv));
   const savedContractor = (data.contractor as string) || "해당없음";
   const isCustomContractor = !!savedContractor && !CONTRACTOR_PRESETS.includes(savedContractor);
   const [showCustomInput, setShowCustomInput] = React.useState(isCustomContractor);
@@ -158,57 +156,21 @@ function OverviewForm() {
 
   return (
     <div className="space-y-3">
-      {/* 현장명 + 작업 분류 프로필 (같은 높이) */}
-      {(() => {
-        const cat = getCategoryById(classification.categoryId);
-        const sub = getSubcategoryById(classification.subcategoryId);
-        const waList = classification.workAttributeIds.map((id) => WORK_ATTRIBUTES.find((a) => a.id === id)).filter(Boolean);
-        const raList = classification.riskAttributeIds.map((id) => RISK_ATTRIBUTES.find((a) => a.id === id)).filter(Boolean);
-        if (!sub) return null;
-        const subLabel = sub.isCustom ? (classification.customSubLabel || sub.label) : sub.label;
-        return (
-          <div className="grid grid-cols-4 gap-3 items-stretch">
-            {/* 현장명 */}
-            <div className="flex flex-col">
-              <label className="ptw-label flex items-center gap-1.5">
-                사업장명
-                <span className="text-xs px-1.5 py-0.5 rounded font-normal" style={{ background: PRIMARY_LIGHT, color: PRIMARY }}>연동</span>
-              </label>
-              <input
-                type="text"
-                value={data.siteName ?? ""}
-                readOnly
-                placeholder="SafeBuddy 연동"
-                className="flex-1 w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 text-slate-400 cursor-not-allowed"
-                style={{ borderColor: `${PRIMARY}22` }}
-              />
-            </div>
-            {/* 분류 프로필 */}
-            <div className="col-span-3 rounded-xl border overflow-hidden" style={{ borderColor: `${PRIMARY}25` }}>
-              <div className="flex items-center gap-2 px-3 py-2 flex-wrap h-full" style={{ background: `${PRIMARY}08` }}>
-                {cat && <span className="text-xs text-slate-500 flex-shrink-0">{cat.icon} {cat.label}</span>}
-                <span className="text-xs font-semibold flex-shrink-0" style={{ color: PRIMARY }}>▶ {sub.num} {subLabel}</span>
-                {sub.articleRef && (
-                  <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0" style={{ background: "#fef9c3", color: "#a16207" }}>⚖️ {sub.articleRef}</span>
-                )}
-                {(waList.length > 0 || raList.length > 0) && (
-                  <>
-                    <span className="text-xs text-slate-300 flex-shrink-0">|</span>
-                    <span className="text-xs text-slate-400 flex-shrink-0">작업 속성</span>
-                    {waList.map((wa) => wa && (
-                      <span key={wa.id} className="text-xs px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600">{wa.label}</span>
-                    ))}
-                    {raList.length > 0 && <span className="text-xs text-slate-300">·</span>}
-                    {raList.map((ra) => ra && (
-                      <span key={ra.id} className="text-xs px-2 py-0.5 rounded-full font-medium text-white" style={{ background: ra.color ?? "#dc2626" }}>⚠ {ra.label}</span>
-                    ))}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* 사업장명 */}
+      <div>
+        <label className="ptw-label flex items-center gap-1.5">
+          사업장명
+          <span className="text-xs px-1.5 py-0.5 rounded font-normal" style={{ background: PRIMARY_LIGHT, color: PRIMARY }}>연동</span>
+        </label>
+        <input
+          type="text"
+          value={data.siteName ?? ""}
+          readOnly
+          placeholder="SafeBuddy 연동"
+          className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 text-slate-400 cursor-not-allowed"
+          style={{ borderColor: `${PRIMARY}22` }}
+        />
+      </div>
 
       {/* Row 1: 작업명 · 문서작성일 · 작성자 */}
       <div className="grid grid-cols-4 gap-3">
@@ -255,7 +217,7 @@ function OverviewForm() {
 
       {/* 작업기간 */}
       <div className="pt-1">
-        <div className="grid grid-cols-3 gap-3 items-end">
+        <div className="grid grid-cols-4 gap-3 items-end">
           <div>
             <label className="ptw-label">작업 시작일</label>
             <input type="date" value={workStartDate} onChange={(e) => update("workStartDate", e.target.value)} className="ptw-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white" />
@@ -307,67 +269,6 @@ function OverviewForm() {
         </div>
       </div>
 
-      {/* 작업목적 + 작업환경 (최하단) */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* 작업 목적 */}
-        <div>
-          {showPurpose ? (
-            <div className="rounded-lg border overflow-hidden anim-fade-in-up" style={{ borderColor: `${PRIMARY}25` }}>
-              <div className="flex items-center justify-between px-3 py-2 border-b" style={{ background: `${PRIMARY}08`, borderColor: `${PRIMARY}15` }}>
-                <span className="text-xs font-semibold" style={{ color: PRIMARY }}>작업 목적</span>
-                <button onClick={() => { setShowPurpose(false); update("purpose", ""); }} className="text-xs text-slate-400 hover:text-slate-600 transition-colors">− 접기</button>
-              </div>
-              <div className="p-3">
-                <textarea
-                  value={data.purpose ?? ""}
-                  onChange={(e) => update("purpose", e.target.value)}
-                  placeholder="이 작업을 수행하는 이유와 목적"
-                  rows={3}
-                  className="ptw-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white resize-none"
-                />
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowPurpose(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed transition-all hover:border-teal-400 hover:bg-teal-50 group"
-              style={{ borderColor: `${PRIMARY}30` }}
-            >
-              <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-colors group-hover:bg-teal-400 group-hover:text-white" style={{ background: `${PRIMARY}15`, color: PRIMARY }}>+</span>
-              <span className="text-xs font-medium transition-colors group-hover:text-teal-600" style={{ color: "#64748b" }}>작업 목적 추가</span>
-            </button>
-          )}
-        </div>
-        {/* 작업환경 */}
-        <div>
-          {showEnv ? (
-            <div className="rounded-lg border overflow-hidden anim-fade-in-up" style={{ borderColor: `${PRIMARY}25` }}>
-              <div className="flex items-center justify-between px-3 py-2 border-b" style={{ background: `${PRIMARY}08`, borderColor: `${PRIMARY}15` }}>
-                <span className="text-xs font-semibold" style={{ color: PRIMARY }}>작업환경</span>
-                <button onClick={() => { setShowEnv(false); update("workEnv", ""); }} className="text-xs text-slate-400 hover:text-slate-600 transition-colors">− 접기</button>
-              </div>
-              <div className="p-3">
-                <textarea
-                  value={data.workEnv ?? ""}
-                  onChange={(e) => update("workEnv", e.target.value)}
-                  placeholder="작업 환경 및 상황 기술"
-                  rows={3}
-                  className="ptw-input w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white resize-none"
-                />
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowEnv(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed transition-all hover:border-teal-400 hover:bg-teal-50 group"
-              style={{ borderColor: `${PRIMARY}30` }}
-            >
-              <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-colors group-hover:bg-teal-400 group-hover:text-white" style={{ background: `${PRIMARY}15`, color: PRIMARY }}>+</span>
-              <span className="text-xs font-medium transition-colors group-hover:text-teal-600" style={{ color: "#64748b" }}>작업환경 추가</span>
-            </button>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -471,52 +372,422 @@ interface HeavyGoodsRow {
   method: string;
   note: string;
 }
-interface HeavyGoodsData { rows?: HeavyGoodsRow[] }
+interface HeavyGoodsRigging {
+  tools?: string[];
+  toolCustom?: string;
+  accessories?: string[];
+  accessoryCustom?: string;
+  diameter?: string;
+  swl?: string;
+  slingCount?: string;
+  loadFactor?: string;
+  safetyFactor?: string;
+  // 인양 능력 검토
+  reviewSlingMaxLoad?: string;
+  reviewSlingTotalLoad?: string;
+  reviewSlingResult?: "가능" | "불가" | "";
+  reviewRatedLoad?: string;
+  reviewRatedTotalLoad?: string;
+  reviewRatedResult?: "가능" | "불가" | "";
+  // 화물 상태
+  cargoAllowLoad?: string;
+  cargoItemName?: string;
+  cargoUnitWeight?: string;
+  cargoShapeType?: string;
+  cargoDimensions?: string;
+  cargoQtyPerTrip?: string;
+  cargoWeightPerTrip?: string;
+  cargoTotalQty?: string;
+  cargoTotalWeight?: string;
+  // 적재 상태
+  stackHeight?: string;
+  routeMinHeight?: string;
+  stackWidth?: string;
+  routeMinWidth?: string;
+  driverVisibility?: string;
+  cargoFixStatus?: string;
+}
+interface HeavyGoodsData { rows?: HeavyGoodsRow[]; rigging?: HeavyGoodsRigging }
 
 const CARGO_SHAPE_OPTIONS = ["사각", "원통", "구형", "기타"];
+const SLING_TOOLS = ["와이어로프", "섬유로프", "체인", "기타"] as const;
+const SLING_ACCESSORIES = ["클램프", "해커", "체인슬링", "러그", "기타"] as const;
 
 function HeavyGoodsForm() {
   const { formData, updateFormData } = useWorkPlanStore();
   const data = (formData["heavy_goods"] as HeavyGoodsData) ?? {};
   const rows: HeavyGoodsRow[] = data.rows ?? [];
+  const rigging: HeavyGoodsRigging = data.rigging ?? {};
+  const [riggingOpen, setRiggingOpen] = React.useState(false);
+  const [cargoOpen, setCargoOpen] = React.useState(false);
+
   const updateRow = (id: string, key: keyof HeavyGoodsRow, value: string) =>
-    updateFormData("heavy_goods", { rows: rows.map((r) => r.id === id ? { ...r, [key]: value } : r) });
+    updateFormData("heavy_goods", { ...data, rows: rows.map((r) => r.id === id ? { ...r, [key]: value } : r) });
   const addRow = () =>
-    updateFormData("heavy_goods", { rows: [...rows, { id: `hg${Date.now()}`, itemName: "", shape: "", weight: "", cargoSize: "", distance: "", method: "", note: "" }] });
+    updateFormData("heavy_goods", { ...data, rows: [...rows, { id: `hg${Date.now()}`, itemName: "", shape: "", weight: "", cargoSize: "", distance: "", method: "", note: "" }] });
   const removeRow = (id: string) =>
-    updateFormData("heavy_goods", { rows: rows.filter((r) => r.id !== id) });
+    updateFormData("heavy_goods", { ...data, rows: rows.filter((r) => r.id !== id) });
+
+  const updateRigging = (patch: Partial<HeavyGoodsRigging>) =>
+    updateFormData("heavy_goods", { ...data, rigging: { ...rigging, ...patch } });
+
+  const toggleChip = (field: "tools" | "accessories", item: string) => {
+    const cur: string[] = rigging[field] ?? [];
+    updateRigging({ [field]: cur.includes(item) ? cur.filter((v) => v !== item) : [...cur, item] });
+  };
+
+  // 최대사용하중 자동계산: (안전작업하중 × 줄걸이수) / 하중계수
+  const maxLoad = (() => {
+    const swl = parseFloat(rigging.swl ?? "");
+    const cnt = parseFloat(rigging.slingCount ?? "");
+    const lf = parseFloat(rigging.loadFactor ?? "");
+    if (!isNaN(swl) && !isNaN(cnt) && !isNaN(lf) && lf !== 0) {
+      return ((swl * cnt) / lf).toFixed(3);
+    }
+    return "";
+  })();
+
+  // 인양 능력 검토 자동계산: 기준하중 > 하중 총중량 → 가능
+  React.useEffect(() => {
+    const patch: Partial<HeavyGoodsRigging> = {};
+    const check = (max: string | undefined, total: string | undefined) => {
+      const m = parseFloat(max ?? ""), t = parseFloat(total ?? "");
+      if (!isNaN(m) && !isNaN(t)) return m >= t ? "가능" : "불가";
+      return undefined;
+    };
+    const sr = check(rigging.reviewSlingMaxLoad, rigging.reviewSlingTotalLoad);
+    const rr = check(rigging.reviewRatedLoad, rigging.reviewRatedTotalLoad);
+    if (sr !== undefined && sr !== rigging.reviewSlingResult) patch.reviewSlingResult = sr;
+    if (rr !== undefined && rr !== rigging.reviewRatedResult) patch.reviewRatedResult = rr;
+    if (Object.keys(patch).length) updateRigging(patch);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rigging.reviewSlingMaxLoad, rigging.reviewSlingTotalLoad, rigging.reviewRatedLoad, rigging.reviewRatedTotalLoad]);
+
+  // 화물 운반 능력 검토: 허용하중 - 1회 운반중량
+  const cargoReview = (() => {
+    const allow = parseFloat(rigging.cargoAllowLoad ?? "");
+    const perTrip = parseFloat(rigging.cargoWeightPerTrip ?? "");
+    if (!isNaN(allow) && !isNaN(perTrip)) return { diff: (allow - perTrip).toFixed(1), ok: allow >= perTrip };
+    return null;
+  })();
+
+  // 적재 상태 검토: 적재높이 ≤ 통로최소높이 AND 적재너비 ≤ 통로최소너비
+  const stackReview = (() => {
+    const sh = parseFloat(rigging.stackHeight ?? "");
+    const rh = parseFloat(rigging.routeMinHeight ?? "");
+    const sw = parseFloat(rigging.stackWidth ?? "");
+    const rw = parseFloat(rigging.routeMinWidth ?? "");
+    const hOk = !isNaN(sh) && !isNaN(rh) ? sh <= rh : null;
+    const wOk = !isNaN(sw) && !isNaN(rw) ? sw <= rw : null;
+    if (hOk === null && wOk === null) return null;
+    const ok = (hOk ?? true) && (wOk ?? true);
+    return { hOk, wOk, ok };
+  })();
 
   return (
-    <div className="rounded-xl border border-slate-200 overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr style={{ background: PRIMARY_LIGHT }}>
-            {["품명", "화물형상", "화물중량", "화물크기", "운반거리", "취급방법", "특이사항", ""].map((h) => (
-              <th key={h} className="px-3 py-2 text-left font-medium text-slate-600 text-xs whitespace-nowrap">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.id} className="border-t border-slate-100">
-              <td className="px-2 py-1.5"><input type="text" value={r.itemName} onChange={(e) => updateRow(r.id, "itemName", e.target.value)} className="w-full min-w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="품명" /></td>
-              <td className="px-2 py-1.5">
-                <select value={r.shape} onChange={(e) => updateRow(r.id, "shape", e.target.value)} className="px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400">
-                  <option value="">선택</option>
-                  {CARGO_SHAPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                </select>
-              </td>
-              <td className="px-2 py-1.5"><input type="text" value={r.weight} onChange={(e) => updateRow(r.id, "weight", e.target.value)} className="w-24 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="예: 500kg" /></td>
-              <td className="px-2 py-1.5"><input type="text" value={r.cargoSize} onChange={(e) => updateRow(r.id, "cargoSize", e.target.value)} className="w-28 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="예: 2.0×1.5×1.2m" /></td>
-              <td className="px-2 py-1.5"><input type="text" value={r.distance} onChange={(e) => updateRow(r.id, "distance", e.target.value)} className="w-24 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="예: 50m" /></td>
-              <td className="px-2 py-1.5"><input type="text" value={r.method} onChange={(e) => updateRow(r.id, "method", e.target.value)} className="w-full min-w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="예: 크레인 인양" /></td>
-              <td className="px-2 py-1.5"><input type="text" value={r.note} onChange={(e) => updateRow(r.id, "note", e.target.value)} className="w-full min-w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="특이사항" /></td>
-              <td className="px-2 py-1.5"><button onClick={() => removeRow(r.id)} className="text-slate-300 hover:text-red-400 text-sm px-1">✕</button></td>
+    <div className="space-y-3">
+      <div className="rounded-xl border border-slate-200 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ background: PRIMARY_LIGHT }}>
+              {["품명", "화물형상", "화물중량", "화물크기", "운반거리", "취급방법", "특이사항", ""].map((h) => (
+                <th key={h} className="px-3 py-2 text-left font-medium text-slate-600 text-xs whitespace-nowrap">{h}</th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="px-3 py-2 border-t border-slate-100"><button onClick={addRow} className="text-xs text-slate-400 hover:text-teal-500">+ 행 추가</button></div>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-t border-slate-100">
+                <td className="px-2 py-1.5"><input type="text" value={r.itemName} onChange={(e) => updateRow(r.id, "itemName", e.target.value)} className="w-full min-w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="품명" /></td>
+                <td className="px-2 py-1.5">
+                  <select value={r.shape} onChange={(e) => updateRow(r.id, "shape", e.target.value)} className="px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400">
+                    <option value="">선택</option>
+                    {CARGO_SHAPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                  </select>
+                </td>
+                <td className="px-2 py-1.5"><input type="text" value={r.weight} onChange={(e) => updateRow(r.id, "weight", e.target.value)} className="w-24 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="예: 500kg" /></td>
+                <td className="px-2 py-1.5"><input type="text" value={r.cargoSize} onChange={(e) => updateRow(r.id, "cargoSize", e.target.value)} className="w-28 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="예: 2.0×1.5×1.2m" /></td>
+                <td className="px-2 py-1.5"><input type="text" value={r.distance} onChange={(e) => updateRow(r.id, "distance", e.target.value)} className="w-24 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="예: 50m" /></td>
+                <td className="px-2 py-1.5"><input type="text" value={r.method} onChange={(e) => updateRow(r.id, "method", e.target.value)} className="w-full min-w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="예: 크레인 인양" /></td>
+                <td className="px-2 py-1.5"><input type="text" value={r.note} onChange={(e) => updateRow(r.id, "note", e.target.value)} className="w-full min-w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="특이사항" /></td>
+                <td className="px-2 py-1.5"><button onClick={() => removeRow(r.id)} className="text-slate-300 hover:text-red-400 text-sm px-1">✕</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="px-3 py-2 border-t border-slate-100"><button onClick={addRow} className="text-xs text-slate-400 hover:text-teal-500">+ 행 추가</button></div>
+      </div>
+
+      {/* 줄걸이 용구 세부사항 (선택) */}
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setRiggingOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
+        >
+          <span className="text-sm font-medium text-slate-700">줄걸이 용구 세부사항 <span className="text-xs font-normal text-slate-400">(선택)</span></span>
+          <div className="flex items-center gap-2">
+            {((rigging.tools?.length ?? 0) > 0 || (rigging.accessories?.length ?? 0) > 0 || rigging.swl) && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: PRIMARY_LIGHT, color: PRIMARY }}>입력됨</span>
+            )}
+            <span className="text-slate-400 text-xs">{riggingOpen ? "▲" : "▼"}</span>
+          </div>
+        </button>
+        {riggingOpen && (
+          <div className="border-t border-slate-100 px-4 py-4 space-y-4">
+            {/* 줄걸이 용구 */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">줄걸이 용구</label>
+              <div className="flex flex-wrap items-center gap-2">
+                {SLING_TOOLS.map((item) => {
+                  const sel = rigging.tools?.includes(item) ?? false;
+                  return (
+                    <button key={item} type="button" onClick={() => toggleChip("tools", item)}
+                      className="text-xs px-3 py-1.5 rounded-full border transition-all"
+                      style={{ background: sel ? PRIMARY : "white", borderColor: sel ? PRIMARY : "#e2e8f0", color: sel ? "white" : "#64748b" }}>
+                      {item}
+                    </button>
+                  );
+                })}
+                {rigging.tools?.includes("기타") && (
+                  <input type="text" value={rigging.toolCustom ?? ""} onChange={(e) => updateRigging({ toolCustom: e.target.value })}
+                    placeholder="용구명 직접 입력" autoFocus
+                    className="px-3 py-1.5 border border-slate-200 rounded-full text-xs focus:outline-none focus:border-teal-400 w-36" />
+                )}
+              </div>
+            </div>
+            {/* 보조 용구 */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">보조 용구</label>
+              <div className="flex flex-wrap items-center gap-2">
+                {SLING_ACCESSORIES.map((item) => {
+                  const sel = rigging.accessories?.includes(item) ?? false;
+                  return (
+                    <button key={item} type="button" onClick={() => toggleChip("accessories", item)}
+                      className="text-xs px-3 py-1.5 rounded-full border transition-all"
+                      style={{ background: sel ? PRIMARY : "white", borderColor: sel ? PRIMARY : "#e2e8f0", color: sel ? "white" : "#64748b" }}>
+                      {item}
+                    </button>
+                  );
+                })}
+                {rigging.accessories?.includes("기타") && (
+                  <input type="text" value={rigging.accessoryCustom ?? ""} onChange={(e) => updateRigging({ accessoryCustom: e.target.value })}
+                    placeholder="용구명 직접 입력" autoFocus
+                    className="px-3 py-1.5 border border-slate-200 rounded-full text-xs focus:outline-none focus:border-teal-400 w-36" />
+                )}
+              </div>
+            </div>
+            {/* 수치 입력 */}
+            <div className="grid grid-cols-4 gap-3">
+              <TextField label="직경 (mm)" value={rigging.diameter ?? ""} onChange={(v) => updateRigging({ diameter: v })} placeholder="예: 16" type="number" />
+              <TextField label="안전작업하중 (ton)" value={rigging.swl ?? ""} onChange={(v) => updateRigging({ swl: v })} placeholder="예: 3.2" type="number" />
+              <TextField label="줄걸이수 (줄)" value={rigging.slingCount ?? ""} onChange={(v) => updateRigging({ slingCount: v })} placeholder="예: 2" type="number" />
+              <TextField label="하중계수 (장력)" value={rigging.loadFactor ?? ""} onChange={(v) => updateRigging({ loadFactor: v })} placeholder="예: 1.4" type="number" />
+            </div>
+            <div className="grid grid-cols-4 gap-3 items-end">
+              <TextField label="안전계수" value={rigging.safetyFactor ?? ""} onChange={(v) => updateRigging({ safetyFactor: v })} placeholder="예: 6" type="number" />
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">최대사용하중 (ton) <span className="text-slate-400 font-normal">자동계산</span></label>
+                <div className="px-3 py-2 rounded-lg text-xs font-semibold border"
+                  style={{ background: maxLoad ? PRIMARY_LIGHT : "#f8fafc", borderColor: maxLoad ? "#b2ece9" : "#e2e8f0", color: maxLoad ? PRIMARY : "#94a3b8" }}>
+                  {maxLoad ? `${maxLoad} ton` : "(안전작업하중 × 줄수) ÷ 하중계수"}
+                </div>
+              </div>
+            </div>
+
+            {/* 인양 능력 검토 결과 */}
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="px-4 py-2.5 text-xs font-semibold text-slate-600 border-b border-slate-100" style={{ background: "#f8fafc" }}>
+                인양 능력 검토 결과
+              </div>
+              {/* 헤더 */}
+              <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-0 border-b border-slate-100 bg-slate-50">
+                <div className="px-3 py-2 text-xs font-medium text-slate-500">구분</div>
+                <div className="px-3 py-2 text-xs font-medium text-slate-500">기준 하중 (ton)</div>
+                <div className="px-3 py-2 text-xs font-medium text-slate-500">하중 총중량 (ton)</div>
+                <div className="px-3 py-2 text-xs font-medium text-slate-500 w-32">검토 결과</div>
+              </div>
+              {/* 줄걸이 용구 행 */}
+              {([
+                { label: "줄걸이 용구", maxField: "reviewSlingMaxLoad" as const, totalField: "reviewSlingTotalLoad" as const, resultField: "reviewSlingResult" as const, placeholder: "최대사용하중" },
+                { label: "중량물 제원", maxField: "reviewRatedLoad" as const, totalField: "reviewRatedTotalLoad" as const, resultField: "reviewRatedResult" as const, placeholder: "정격하중" },
+              ] as const).map(({ label, maxField, totalField, resultField, placeholder }) => (
+                <div key={label} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-0 border-b border-slate-50 last:border-0">
+                  <div className="px-3 py-2 text-xs text-slate-600 font-medium flex items-center">{label}</div>
+                  <div className="px-2 py-1.5">
+                    <input type="number" value={rigging[maxField] ?? ""} onChange={(e) => updateRigging({ [maxField]: e.target.value })}
+                      placeholder={placeholder} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                  </div>
+                  <div className="px-2 py-1.5">
+                    <input type="number" value={rigging[totalField] ?? ""} onChange={(e) => updateRigging({ [totalField]: e.target.value })}
+                      placeholder="총중량" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                  </div>
+                  <div className="px-2 py-1.5 flex gap-1.5 items-center w-32">
+                    {(["가능", "불가"] as const).map((opt) => (
+                      <button key={opt} type="button"
+                        onClick={() => updateRigging({ [resultField]: rigging[resultField] === opt ? "" : opt })}
+                        className="flex-1 text-xs py-1.5 rounded-lg border font-medium transition-all"
+                        style={{
+                          background: rigging[resultField] === opt ? (opt === "가능" ? "#dcfce7" : "#fee2e2") : "white",
+                          borderColor: rigging[resultField] === opt ? (opt === "가능" ? "#86efac" : "#fca5a5") : "#e2e8f0",
+                          color: rigging[resultField] === opt ? (opt === "가능" ? "#166534" : "#991b1b") : "#94a3b8",
+                        }}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 화물 및 적재 상태 */}
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
+        <button type="button" onClick={() => setCargoOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50">
+          <span className="text-sm font-medium text-slate-700">화물 및 적재 상태 <span className="text-xs font-normal text-slate-400">(선택)</span></span>
+          <div className="flex items-center gap-2">
+            {(rigging.cargoAllowLoad || rigging.stackHeight) && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: PRIMARY_LIGHT, color: PRIMARY }}>입력됨</span>
+            )}
+            <span className="text-slate-400 text-xs">{cargoOpen ? "▲" : "▼"}</span>
+          </div>
+        </button>
+        {cargoOpen && (
+          <div className="border-t border-slate-100 px-4 py-4 space-y-5">
+
+            {/* ── 화물 상태 ── */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-semibold text-slate-600">화물 상태</span>
+                <span className="text-xs text-slate-400">허용하중 ①</span>
+                <div className="flex items-center gap-1">
+                  <input type="number" value={rigging.cargoAllowLoad ?? ""} onChange={(e) => updateRigging({ cargoAllowLoad: e.target.value })}
+                    placeholder="000" className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                  <span className="text-xs text-slate-400">kg</span>
+                  <span className="text-xs text-slate-300 ml-1">(제원별 별도 확인 후 기재)</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <label className="ptw-label">품명</label>
+                  <input type="text" value={rigging.cargoItemName ?? ""} onChange={(e) => updateRigging({ cargoItemName: e.target.value })}
+                    placeholder="예: 철근(D-22)" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="ptw-label">단위중량 (kg)</label>
+                  <input type="number" value={rigging.cargoUnitWeight ?? ""} onChange={(e) => updateRigging({ cargoUnitWeight: e.target.value })}
+                    placeholder="000" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="ptw-label">종류 / 형상</label>
+                  <input type="text" value={rigging.cargoShapeType ?? ""} onChange={(e) => updateRigging({ cargoShapeType: e.target.value })}
+                    placeholder="예: 봉형 / 직선" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="ptw-label">크기 (가로×세로×높이) m</label>
+                  <input type="text" value={rigging.cargoDimensions ?? ""} onChange={(e) => updateRigging({ cargoDimensions: e.target.value })}
+                    placeholder="예: 1.0×0.5×0.3" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="ptw-label">1회 운반수량 (개)</label>
+                  <input type="number" value={rigging.cargoQtyPerTrip ?? ""} onChange={(e) => updateRigging({ cargoQtyPerTrip: e.target.value })}
+                    placeholder="0" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="ptw-label">1회 운반중량 ② (kg)</label>
+                  <input type="number" value={rigging.cargoWeightPerTrip ?? ""} onChange={(e) => updateRigging({ cargoWeightPerTrip: e.target.value })}
+                    placeholder="000" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="ptw-label">총 수량 (개)</label>
+                  <input type="number" value={rigging.cargoTotalQty ?? ""} onChange={(e) => updateRigging({ cargoTotalQty: e.target.value })}
+                    placeholder="0" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="ptw-label">총 중량 (kg)</label>
+                  <input type="number" value={rigging.cargoTotalWeight ?? ""} onChange={(e) => updateRigging({ cargoTotalWeight: e.target.value })}
+                    placeholder="000" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+              </div>
+              {/* 운반 능력 검토 */}
+              <div className="mt-3 flex items-center gap-3 px-3 py-2.5 rounded-xl border" style={{ background: cargoReview ? (cargoReview.ok ? "#f0fdf4" : "#fef2f2") : "#f8fafc", borderColor: cargoReview ? (cargoReview.ok ? "#86efac" : "#fca5a5") : "#e2e8f0" }}>
+                <span className="text-xs font-medium text-slate-500">운반 능력 검토 ① − ②</span>
+                {cargoReview ? (
+                  <>
+                    <span className="text-xs font-semibold tabular-nums" style={{ color: cargoReview.ok ? "#166534" : "#991b1b" }}>
+                      {cargoReview.diff} kg
+                    </span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: cargoReview.ok ? "#dcfce7" : "#fee2e2", color: cargoReview.ok ? "#166534" : "#991b1b" }}>
+                      {cargoReview.ok ? "적정" : "부적정"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-slate-300">허용하중과 1회 운반중량 입력 시 자동 계산</span>
+                )}
+              </div>
+            </div>
+
+            {/* ── 적재 상태 ── */}
+            <div className="border-t border-slate-100 pt-4">
+              <span className="text-xs font-semibold text-slate-600 block mb-3">적재 상태</span>
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <label className="ptw-label">적재 높이 ① (m)</label>
+                  <input type="number" value={rigging.stackHeight ?? ""} onChange={(e) => updateRigging({ stackHeight: e.target.value })}
+                    placeholder="0.0" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="ptw-label">작업장·통로 최소 높이 ② (m)</label>
+                  <input type="number" value={rigging.routeMinHeight ?? ""} onChange={(e) => updateRigging({ routeMinHeight: e.target.value })}
+                    placeholder="0.0" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="ptw-label">적재 너비 ③ (m)</label>
+                  <input type="number" value={rigging.stackWidth ?? ""} onChange={(e) => updateRigging({ stackWidth: e.target.value })}
+                    placeholder="0.0" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="ptw-label">작업장·통로 최소 너비 ④ (m)</label>
+                  <input type="number" value={rigging.routeMinWidth ?? ""} onChange={(e) => updateRigging({ routeMinWidth: e.target.value })}
+                    placeholder="0.0" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div className="col-span-2">
+                  <label className="ptw-label">운전자 시야 확보</label>
+                  <input type="text" value={rigging.driverVisibility ?? ""} onChange={(e) => updateRigging({ driverVisibility: e.target.value })}
+                    placeholder="예: 적정 (조치내용: 유도원 배치)" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+                <div className="col-span-2">
+                  <label className="ptw-label">적재물 고정 상태</label>
+                  <input type="text" value={rigging.cargoFixStatus ?? ""} onChange={(e) => updateRigging({ cargoFixStatus: e.target.value })}
+                    placeholder="예: 적정 (조치내용: 결속 고정)" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                </div>
+              </div>
+              {/* 적재 상태 검토 */}
+              <div className="mt-3 flex items-center gap-3 px-3 py-2.5 rounded-xl border" style={{ background: stackReview ? (stackReview.ok ? "#f0fdf4" : "#fef2f2") : "#f8fafc", borderColor: stackReview ? (stackReview.ok ? "#86efac" : "#fca5a5") : "#e2e8f0" }}>
+                <span className="text-xs font-medium text-slate-500">적재 상태 검토 ①≤② / ③≤④</span>
+                {stackReview ? (
+                  <>
+                    <span className="text-xs text-slate-500">
+                      높이 {stackReview.hOk === null ? "—" : stackReview.hOk ? "✓" : "✗"}
+                      &nbsp;·&nbsp;
+                      너비 {stackReview.wOk === null ? "—" : stackReview.wOk ? "✓" : "✗"}
+                    </span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: stackReview.ok ? "#dcfce7" : "#fee2e2", color: stackReview.ok ? "#166534" : "#991b1b" }}>
+                      {stackReview.ok ? "적정" : "부적정"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-slate-300">치수 입력 시 자동 계산</span>
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -628,15 +899,15 @@ function EquipmentRegistryPickerModal({
 
 // ─── 장비별 섹션 ID 맵 ──────────────────────────────────────────
 const EQUIPMENT_SECTION_IDS: Record<string, string[]> = {
-  truck:       ["truck_machine_spec", "truck_route", "truck_load", "truck_road_condition", "truck_overturn_prevention"],
-  bulldozer:   ["bulldozer_machine_spec", "bulldozer_slope", "bulldozer_buried", "bulldozer_obstacle", "bulldozer_alarm"],
-  grader:      ["grader_machine_spec", "grader_section", "grader_road", "grader_speed"],
-  loader:      ["loader_machine_spec", "loader_bucket", "loader_radius", "loader_method"],
-  scraper:     ["scraper_machine_spec", "scraper_section", "scraper_depth"],
-  crane:       ["crane_machine_spec", "crane_capacity", "crane_rigging", "crane_swing", "crane_signal", "crane_ground"],
-  excavator:   ["excavator_machine_spec", "excavator_depth", "excavator_ground", "excavator_utility", "excavator_retaining"],
-  pile_driver: ["pile_driver_machine_spec", "pile_method", "pile_type", "pile_noise"],
-  roller:      ["roller_machine_spec", "roller_section", "roller_count", "roller_compaction"],
+  truck:         ["truck_machine_spec", "truck_route", "truck_load", "truck_road_condition", "truck_overturn_prevention", "truck_checklist"],
+  excavator:     ["excavator_machine_spec", "excavator_depth", "excavator_ground", "excavator_utility", "excavator_retaining", "excavator_checklist"],
+  aerial_lift:   ["aerial_lift_machine_spec", "aerial_lift_work_plan", "aerial_lift_checklist"],
+  crane:         ["crane_machine_spec", "crane_capacity", "crane_rigging", "crane_swing", "crane_signal", "crane_ground", "crane_checklist"],
+  concrete_pump: ["concrete_pump_machine_spec", "concrete_pump_work_plan", "concrete_pump_checklist"],
+  pile_driver:   ["pile_driver_machine_spec", "pile_method", "pile_type", "pile_noise", "pile_checklist"],
+  forklift:      ["forklift_machine_spec", "forklift_work_plan", "forklift_checklist"],
+  loader:        ["loader_machine_spec", "loader_bucket", "loader_radius", "loader_method", "loader_checklist"],
+  roller:        ["roller_machine_spec", "roller_section", "roller_count", "roller_compaction", "roller_checklist"],
 };
 
 // ─── 사용 장비 정보 ──────────────────────────────────────────────
@@ -658,9 +929,7 @@ function EquipmentInfoForm() {
   const data = (formData["equipment_info"] as EquipmentInfoData) ?? {};
   const rows: EquipRow[] = data.rows ?? [];
   const isConst = true;
-  const [pickerOpen, setPickerOpen] = React.useState(false);
   const [expandedEq, setExpandedEq] = React.useState<Record<string, boolean>>({});
-  const [activeSubTab, setActiveSubTab] = React.useState<Record<string, number>>({});
 
   const save = (newRows: EquipRow[]) =>
     updateFormData("equipment_info", { rows: newRows });
@@ -722,49 +991,24 @@ function EquipmentInfoForm() {
   // 사이드패널 클릭 시 탭 전환 + 카드 펼치기 (Bug 2-2)
   React.useEffect(() => {
     const handler = (e: Event) => {
-      const { eqType, tabIndex } = (e as CustomEvent).detail;
+      const { eqType } = (e as CustomEvent).detail;
       setExpandedEq((prev) => ({ ...prev, [eqType]: true }));
-      setActiveSubTab((prev) => ({ ...prev, [eqType]: tabIndex }));
     };
     window.addEventListener("ptw:focusEquipmentSection", handler);
     return () => window.removeEventListener("ptw:focusEquipmentSection", handler);
   }, []);
 
-  const isTabFilled = (sid: string): boolean => {
-    const d = formData[sid];
-    if (!d || typeof d !== "object") return false;
-    const rows = (d as { rows?: unknown[] }).rows;
-    if (Array.isArray(rows)) return rows.length > 0;
-    return Object.values(d as Record<string, unknown>).some(
-      (v) => v !== "" && v !== null && v !== undefined && v !== false
-    );
-  };
-
-  // ── 차량계 건설기계 전용 UI ───────────────────────────────────
+// ── 차량계 건설기계 전용 UI ───────────────────────────────────
   if (isConst) {
     const customRows = rows.filter((r) => !r.equipmentType);
     return (
       <div className="space-y-4">
-        {/* 상단: 투입 건설기계 선택 + 단일 대장 불러오기 버튼 */}
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-            투입 건설기계 선택 (복수 선택 가능)
-          </p>
-          <button
-            onClick={() => setPickerOpen(true)}
-            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all hover:opacity-80"
-            style={{ borderColor: PRIMARY, color: PRIMARY, background: PRIMARY_LIGHT }}
-          >
-            📋 장비·기계 관리에서 불러오기
-          </button>
-        </div>
+        {/* 상단: 투입 건설기계 선택 */}
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          투입 건설기계 선택 (복수 선택 가능)
+        </p>
 
-        {pickerOpen && (
-          <EquipmentRegistryPickerModal
-            onSelect={(recs) => { applyRegistryRecords(recs); setPickerOpen(false); }}
-            onClose={() => setPickerOpen(false)}
-          />
-        )}
+
 
         {/* 9종 선택 토글 */}
         <div className="flex flex-wrap gap-2">
@@ -812,7 +1056,7 @@ function EquipmentInfoForm() {
         )}
 
         {/* ── 장비별 그룹 카드 (기본 정보 + 상세 입력 통합) ── */}
-        {[...selectedEquipments].sort((a, b) => CONSTRUCTION_EQUIPMENT_TYPES[a].num - CONSTRUCTION_EQUIPMENT_TYPES[b].num).map((type) => {
+        {[...selectedEquipments].sort((a, b) => (CONSTRUCTION_EQUIPMENT_TYPES[a]?.num ?? 99) - (CONSTRUCTION_EQUIPMENT_TYPES[b]?.num ?? 99)).map((type) => {
           const info = CONSTRUCTION_EQUIPMENT_TYPES[type];
           const row = rows.find((r) => r.equipmentType === type);
           const sectionIds = EQUIPMENT_SECTION_IDS[type] ?? [];
@@ -865,43 +1109,19 @@ function EquipmentInfoForm() {
                 </button>
               </div>
 
-              {/* 상세 입력 */}
+              {/* 상세 입력 — 세로 나열 */}
               {isOpen && (
-                <div className="p-3 space-y-3 anim-fade-in-up" style={{ background: "white" }}>
-                  {/* 서브 탭 */}
-                  <div className="flex flex-wrap gap-1 border-b border-slate-100 pb-2">
-                    {sectionIds.map((sid, i) => {
-                      const activeIdx = activeSubTab[type] ?? 0;
-                      return (
-                        <button
-                          key={sid}
-                          onClick={() => setActiveSubTab((prev) => ({ ...prev, [type]: i }))}
-                          className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-lg font-medium transition-all"
-                          style={{
-                            background: activeIdx === i ? PRIMARY : "transparent",
-                            color: activeIdx === i ? "white" : "#94a3b8",
-                            border: activeIdx === i ? "none" : "1px solid #e2e8f0",
-                          }}
-                        >
-                          {SECTION_COMPONENTS[sid]?.title ?? sid}
-                          {isTabFilled(sid) && (
-                            <span
-                              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                              style={{ background: activeIdx === i ? "rgba(255,255,255,0.8)" : PRIMARY }}
-                            />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {/* 활성 탭 컨텐츠 — id 부여로 스크롤 도달 가능 (Bug 2-2) */}
-                  {(() => {
-                    const activeIdx = activeSubTab[type] ?? 0;
-                    const sid = sectionIds[activeIdx];
+                <div className="p-3 space-y-5 anim-fade-in-up" style={{ background: "white" }}>
+                  {sectionIds.map((sid) => {
                     const entry = SECTION_COMPONENTS[sid];
                     if (!entry) return null;
-                    return <div id={sid}><entry.Component /></div>;
-                  })()}
+                    return (
+                      <div key={sid} id={sid}>
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 pb-1.5 border-b border-slate-100">{entry.title}</p>
+                        <entry.Component />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -941,9 +1161,6 @@ function EquipmentInfoForm() {
             </table>
           </div>
         )}
-        <div>
-          <button onClick={addCustomRow} className="text-xs font-medium px-3 py-1.5 rounded-lg border border-dashed border-slate-300 text-slate-500 hover:border-teal-400 hover:text-teal-600 transition-all">+ 기타 장비 추가</button>
-        </div>
       </div>
     );
   }
@@ -951,22 +1168,6 @@ function EquipmentInfoForm() {
   // ── 일반 장비 정보 ─────────────────────────────────────────────
   return (
     <div className="space-y-3">
-      {/* 상단: 대장 불러오기 */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => setPickerOpen(true)}
-          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all hover:opacity-80"
-          style={{ borderColor: PRIMARY, color: PRIMARY, background: PRIMARY_LIGHT }}
-        >
-          📋 장비·기계 관리에서 불러오기
-        </button>
-      </div>
-      {pickerOpen && (
-        <EquipmentRegistryPickerModal
-          onSelect={(recs) => { applyRegistryRecords(recs); setPickerOpen(false); }}
-          onClose={() => setPickerOpen(false)}
-        />
-      )}
       <div className="rounded-xl border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -1010,71 +1211,135 @@ function EquipmentInfoForm() {
 }
 
 // ─── 작업 인원 배치 ──────────────────────────────────────────────
-interface PersonnelRow { id: string; name: string; position: string; role: string; contact: string }
-interface WorkPersonnelData { rows: PersonnelRow[]; operator: string; signal: string; guide: string; observer: string }
+const PERSONNEL_ROLES = ["작업자", "운전원", "유도자", "작업지휘자", "신호수", "감시자"] as const;
+type PersonnelRole = typeof PERSONNEL_ROLES[number];
+interface PersonnelDetailRow { id: string; role: PersonnelRole; name: string; contact: string; affiliation: string; license: string; signalMethod: string; position: string; extraNote: string; trained: boolean }
+interface WorkPersonnelData { counts: Partial<Record<PersonnelRole, number>>; details?: PersonnelDetailRow[] }
+
+const ROLE_EXTRA: Record<PersonnelRole, { label: string; placeholder: string; field: "license" | "signalMethod" | "position" | "extraNote" }> = {
+  운전원:     { label: "면허",     placeholder: "건설기계면허 00-000000",           field: "license" },
+  유도자:     { label: "신호방법", placeholder: "수신호 / 무전",                    field: "signalMethod" },
+  작업지휘자: { label: "직책",     placeholder: "공사팀장",                         field: "position" },
+  작업자:     { label: "교육이수", placeholder: "교육이수 정보: 기초안전보건교육 등", field: "extraNote" },
+  신호수:     { label: "교육이수", placeholder: "교육이수 정보: 기초안전보건교육 등", field: "extraNote" },
+  감시자:     { label: "교육이수", placeholder: "교육이수 정보: 기초안전보건교육 등", field: "extraNote" },
+};
+
+const EMPTY_DETAIL_ROW = (): PersonnelDetailRow => ({
+  id: `pd${Date.now()}`, role: "작업자", name: "", contact: "", affiliation: "", license: "", signalMethod: "", position: "", extraNote: "", trained: false,
+});
+
+const inputCls = "px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 bg-white w-full";
 
 function WorkPersonnelForm() {
   const { formData, updateFormData } = useWorkPlanStore();
   const data = (formData["work_personnel"] as WorkPersonnelData) ?? {};
-  const rows: PersonnelRow[] = data.rows ?? [{ id: "p1", name: "", position: "", role: "", contact: "" }];
+  const counts = data.counts ?? {};
+  const details: PersonnelDetailRow[] = data.details ?? [];
   const [showDetail, setShowDetail] = React.useState(false);
 
-  const update = (key: string, val: string) =>
-    updateFormData("work_personnel", { ...data, [key]: val });
-  const updateRow = (id: string, key: keyof PersonnelRow, value: string) =>
-    updateFormData("work_personnel", { ...data, rows: rows.map((r) => r.id === id ? { ...r, [key]: value } : r) });
-  const addRow = () =>
-    updateFormData("work_personnel", { ...data, rows: [...rows, { id: `p${Date.now()}`, name: "", position: "", role: "", contact: "" }] });
-  const removeRow = (id: string) =>
-    updateFormData("work_personnel", { ...data, rows: rows.filter((r) => r.id !== id) });
+  const setCount = (role: PersonnelRole, val: string) => {
+    const n = parseInt(val, 10);
+    updateFormData("work_personnel", { ...data, counts: { ...counts, [role]: isNaN(n) || n < 0 ? 0 : n } });
+  };
+
+  const total = PERSONNEL_ROLES.reduce((s, r) => s + (counts[r] ?? 0), 0);
+
+  const updateDetail = (id: string, key: keyof PersonnelDetailRow, value: string | boolean) =>
+    updateFormData("work_personnel", { ...data, details: details.map((r) => r.id === id ? { ...r, [key]: value } : r) });
+  const addDetail = () =>
+    updateFormData("work_personnel", { ...data, details: [...details, EMPTY_DETAIL_ROW()] });
+  const removeDetail = (id: string) =>
+    updateFormData("work_personnel", { ...data, details: details.filter((r) => r.id !== id) });
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { key: "operator", label: "운전원 (명)" },
-          { key: "signal", label: "신호수 (명)" },
-          { key: "guide", label: "유도원 (명)" },
-          { key: "observer", label: "감시인 (명)" },
-        ].map(({ key, label }) => (
-          <TextField key={key} label={label} value={(data as unknown as Record<string, string>)[key] ?? ""} onChange={(v) => update(key, v)} placeholder="0" type="number" />
-        ))}
+    <div className="space-y-3">
+      {/* 역할별 인원 수 — 한 줄 */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {PERSONNEL_ROLES.map((role) => {
+          const val = counts[role] ?? 0;
+          const active = val > 0;
+          return (
+            <div key={role} className="flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 transition-colors"
+              style={{ borderColor: active ? `${PRIMARY}50` : "#e2e8f0", background: active ? PRIMARY_LIGHT : "white" }}>
+              <span className="text-xs font-semibold whitespace-nowrap" style={{ color: active ? PRIMARY : "#64748b" }}>{role}</span>
+              <input
+                type="number" min={0} value={val === 0 ? "" : val}
+                onChange={(e) => setCount(role, e.target.value)}
+                onBlur={(e) => { if (e.target.value === "") setCount(role, "0"); }}
+                placeholder="0"
+                className="w-14 text-center text-xs font-bold tabular-nums border rounded-lg px-1 py-0.5 outline-none focus:border-teal-400"
+                style={{ borderColor: active ? `${PRIMARY}40` : "#e2e8f0", color: active ? PRIMARY : "#94a3b8", background: active ? "white" : "#f8fafc" }}
+              />
+              <span className="text-xs" style={{ color: active ? PRIMARY : "#94a3b8" }}>명</span>
+            </div>
+          );
+        })}
+        <div className="flex items-center gap-1 order-first pr-2 border-r border-slate-200 mr-1">
+          <span className="text-xs text-slate-400">총</span>
+          <span className="text-sm font-bold tabular-nums" style={{ color: total > 0 ? PRIMARY : "#94a3b8" }}>{total}명</span>
+        </div>
       </div>
 
+      {/* 상세 입력 토글 */}
       <div>
         <button
           onClick={() => setShowDetail(!showDetail)}
-          className="flex items-center gap-2 text-xs font-semibold mb-2 hover:text-teal-600 transition-colors"
-          style={{ color: showDetail ? PRIMARY : "#64748b" }}
+          className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-teal-600 transition-colors"
         >
-          <span>작업 인원 상세</span>
-          <span className="text-slate-300">{showDetail ? "▲ 접기" : "▼ 펼치기"}</span>
+          <span>{showDetail ? "▲" : "▼"}</span>
+          <span>인원 상세 입력 {details.length > 0 ? `(${details.length}명)` : "(선택)"}</span>
         </button>
+
         {showDetail && (
-          <div className="rounded-xl border border-slate-200 overflow-hidden anim-fade-in-up">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: PRIMARY_LIGHT }}>
-                  {["이름", "직책", "역할", "연락처", ""].map((h) => (
-                    <th key={h} className="px-3 py-2 text-left font-medium text-slate-600 text-xs">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id} className="border-t border-slate-100">
-                    {(["name", "position", "role", "contact"] as (keyof PersonnelRow)[]).map((key) => (
-                      <td key={key} className="px-2 py-1">
-                        <input type={key === "contact" ? "tel" : "text"} value={r[key]} onChange={(e) => updateRow(r.id, key, e.target.value)} className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder={key === "name" ? "홍길동" : key === "position" ? "팀장" : key === "role" ? "운전원" : "010-0000-0000"} />
-                      </td>
-                    ))}
-                    <td className="px-2 py-1"><button onClick={() => removeRow(r.id)} className="text-slate-300 hover:text-red-400 text-sm px-1">✕</button></td>
+          <div className="mt-2 rounded-xl border border-slate-200 overflow-hidden anim-fade-in-up">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr style={{ background: PRIMARY_LIGHT }}>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500 whitespace-nowrap">역할</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500 whitespace-nowrap">성명</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500 whitespace-nowrap">연락처</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500 whitespace-nowrap">소속</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-500 whitespace-nowrap">추가정보</th>
+                    <th className="px-3 py-2 text-center font-medium text-slate-500 whitespace-nowrap">교육이수</th>
+                    <th className="w-6" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {details.map((r) => {
+                    const extra = ROLE_EXTRA[r.role];
+                    return (
+                      <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td className="px-2 py-1.5">
+                          <select value={r.role} onChange={(e) => updateDetail(r.id, "role", e.target.value)}
+                            className="w-full px-2 py-1 border border-slate-200 rounded-lg outline-none focus:border-teal-400 bg-white text-xs">
+                            {PERSONNEL_ROLES.map((role) => <option key={role}>{role}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-2 py-1.5"><input type="text" value={r.name} onChange={(e) => updateDetail(r.id, "name", e.target.value)} className="w-full px-2 py-1 border border-slate-200 rounded-lg outline-none focus:border-teal-400 text-xs" placeholder="홍길동" /></td>
+                        <td className="px-2 py-1.5"><input type="tel" value={r.contact} onChange={(e) => updateDetail(r.id, "contact", e.target.value)} className="w-full px-2 py-1 border border-slate-200 rounded-lg outline-none focus:border-teal-400 text-xs" placeholder="010-0000-0000" /></td>
+                        <td className="px-2 py-1.5"><input type="text" value={r.affiliation} onChange={(e) => updateDetail(r.id, "affiliation", e.target.value)} className="w-full px-2 py-1 border border-slate-200 rounded-lg outline-none focus:border-teal-400 text-xs" placeholder="소속" /></td>
+                        <td className="px-2 py-1.5">
+                          <input type="text" value={r[extra.field] as string} onChange={(e) => updateDetail(r.id, extra.field, e.target.value)}
+                            className="w-full px-2 py-1 border border-slate-200 rounded-lg outline-none focus:border-teal-400 text-xs"
+                            placeholder={`${extra.label}: ${extra.placeholder}`} />
+                        </td>
+                        <td className="px-2 py-1.5 text-center">
+                          <div className="w-5 h-5 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto transition-colors"
+                            style={{ background: r.trained ? PRIMARY : "white", borderColor: r.trained ? PRIMARY : "#cbd5e1" }}
+                            onClick={() => updateDetail(r.id, "trained", !r.trained)}
+                          >{r.trained && "✓"}</div>
+                        </td>
+                        <td className="px-2 py-1.5"><button onClick={() => removeDetail(r.id)} className="text-slate-300 hover:text-red-400 px-1">✕</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
             <div className="px-3 py-2 border-t border-slate-100">
-              <button onClick={addRow} className="text-xs text-slate-400 hover:text-teal-500">+ 행 추가</button>
+              <button onClick={addDetail} className="text-xs text-slate-400 hover:text-teal-500 transition-colors">+ 행 추가</button>
             </div>
           </div>
         )}
@@ -1373,12 +1638,15 @@ function EmergencyContactForm() {
 function TruckRouteForm() {
   const [d, u] = useSection<Record<string, string>>("truck_route", {});
   return (
-    <div className="space-y-3">
-      <TextAreaField label="운행 경로 (경유지 포함)" value={d.route ?? ""} onChange={(v) => u("route", v)} placeholder="출발지 → 경유지 → 목적지 순으로 기재" rows={3} />
-      <div className="grid grid-cols-2 gap-3">
-        <TextField label="운행 거리 (km)" value={d.distance ?? ""} onChange={(v) => u("distance", v)} placeholder="예: 2.5" type="number" />
-        <TextField label="예상 소요 시간" value={d.duration ?? ""} onChange={(v) => u("duration", v)} placeholder="예: 30분" />
+    <div className="grid grid-cols-4 gap-3 items-end">
+      <div className="col-span-2">
+        <label className="ptw-label">운행 경로 (경유지 포함)</label>
+        <input type="text" value={d.route ?? ""} onChange={(e) => u("route", e.target.value)}
+          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-400"
+          placeholder="출발지 → 경유지 → 목적지" />
       </div>
+      <TextField label="운행 거리 (km)" value={d.distance ?? ""} onChange={(v) => u("distance", v)} placeholder="예: 2.5" type="number" />
+      <TextField label="예상 소요 시간" value={d.duration ?? ""} onChange={(v) => u("duration", v)} placeholder="예: 30분" />
     </div>
   );
 }
@@ -1386,13 +1654,11 @@ function TruckRouteForm() {
 function TruckLoadForm() {
   const [d, u] = useSection<Record<string, string>>("truck_load", {});
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <TextField label="최대 적재량 (ton)" value={d.maxLoad ?? ""} onChange={(v) => u("maxLoad", v)} placeholder="예: 15" type="number" />
-        <TextField label="실제 적재량 (ton)" value={d.actualLoad ?? ""} onChange={(v) => u("actualLoad", v)} placeholder="예: 12" type="number" />
-      </div>
+    <div className="grid grid-cols-4 gap-3 items-end">
+      <TextField label="최대 적재량 (ton)" value={d.maxLoad ?? ""} onChange={(v) => u("maxLoad", v)} placeholder="예: 15" type="number" />
+      <TextField label="실제 적재량 (ton)" value={d.actualLoad ?? ""} onChange={(v) => u("actualLoad", v)} placeholder="예: 12" type="number" />
       <TextField label="적재물 종류" value={d.material ?? ""} onChange={(v) => u("material", v)} placeholder="예: 콘크리트 폐기물" />
-      <TextAreaField label="낙하 방지 조치" value={d.fallPrevention ?? ""} onChange={(v) => u("fallPrevention", v)} placeholder="덮개 설치, 결속 방법 등" rows={2} />
+      <TextField label="낙하 방지 조치" value={d.fallPrevention ?? ""} onChange={(v) => u("fallPrevention", v)} placeholder="덮개 설치, 결속 방법 등" />
     </div>
   );
 }
@@ -1400,12 +1666,59 @@ function TruckLoadForm() {
 function TruckRoadForm() {
   const [d, u] = useSection<Record<string, string>>("truck_road_condition", {});
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <TextField label="도로 폭원 (m)" value={d.width ?? ""} onChange={(v) => u("width", v)} placeholder="예: 6.0" type="number" />
-        <TextField label="최대 구배 (%)" value={d.slope ?? ""} onChange={(v) => u("slope", v)} placeholder="예: 8" type="number" />
+    <div className="grid grid-cols-4 gap-3 items-end">
+      <TextField label="도로 폭원 (m)" value={d.width ?? ""} onChange={(v) => u("width", v)} placeholder="예: 6.0" type="number" />
+      <TextField label="최대 구배 (%)" value={d.slope ?? ""} onChange={(v) => u("slope", v)} placeholder="예: 8" type="number" />
+      <div className="col-span-2">
+        <TextField label="도로 상태 특이사항" value={d.note ?? ""} onChange={(v) => u("note", v)} placeholder="노면 상태, 주의 구간 등" />
       </div>
-      <TextAreaField label="도로 상태 특이사항" value={d.note ?? ""} onChange={(v) => u("note", v)} placeholder="노면 상태, 주의 구간 등" rows={2} />
+    </div>
+  );
+}
+
+interface TruckSpecRow { id: string; machineName: string; manufactureDate: string; grossWeight: string; speedLimit: string; climbingAbility: string; maxSpeed: string; loadCapacity: string; dumpAngle: string; liftTime: string; loadDimensions: string }
+interface TruckSpecData { rows?: TruckSpecRow[] }
+const EMPTY_TRUCK_SPEC_ROW = (): TruckSpecRow => ({ id: `ts${Date.now()}`, machineName: "", manufactureDate: "", grossWeight: "", speedLimit: "", climbingAbility: "", maxSpeed: "", loadCapacity: "", dumpAngle: "", liftTime: "", loadDimensions: "" });
+
+function TruckSpecForm() {
+  const { formData, updateFormData } = useWorkPlanStore();
+  const data = (formData["truck_spec"] as TruckSpecData) ?? {};
+  const rows: TruckSpecRow[] = data.rows ?? [];
+  const save = (r: TruckSpecRow[]) => updateFormData("truck_spec", { rows: r });
+  const update = (id: string, key: keyof TruckSpecRow, val: string) => save(rows.map((r) => r.id === id ? { ...r, [key]: val } : r));
+
+  const fieldCls = "w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400";
+
+  return (
+    <div className="space-y-3">
+      {rows.map((r, i) => (
+        <div key={r.id} className="rounded-xl border border-slate-200 p-3 space-y-3" style={{ background: "#fafcff" }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-400">장비 {i + 1}</span>
+              <input type="text" value={r.machineName} onChange={(e) => update(r.id, "machineName", e.target.value)}
+                className="px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 w-40" placeholder="장비명 (기계 제원과 동일)" />
+            </div>
+            <button onClick={() => save(rows.filter((x) => x.id !== r.id))} className="text-slate-300 hover:text-red-400 text-sm px-1">✕</button>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div><label className="ptw-label">제조일</label><input type="text" value={r.manufactureDate} onChange={(e) => update(r.id, "manufactureDate", e.target.value)} className={fieldCls} placeholder="예: 20.03.15" /></div>
+            <div><label className="ptw-label">차량총중량 (ton)</label><input type="text" value={r.grossWeight} onChange={(e) => update(r.id, "grossWeight", e.target.value)} className={fieldCls} placeholder="예: 15" /></div>
+            <div><label className="ptw-label">제한속도 (km/h)</label><input type="text" value={r.speedLimit} onChange={(e) => update(r.id, "speedLimit", e.target.value)} className={fieldCls} placeholder="예: 30" /></div>
+            <div><label className="ptw-label">등판능력 (도, 부하)</label><input type="text" value={r.climbingAbility} onChange={(e) => update(r.id, "climbingAbility", e.target.value)} className={fieldCls} placeholder="예: 30도 (만재)" /></div>
+            <div><label className="ptw-label">최고속도 (km/h)</label><input type="text" value={r.maxSpeed} onChange={(e) => update(r.id, "maxSpeed", e.target.value)} className={fieldCls} placeholder="예: 90" /></div>
+            <div><label className="ptw-label">적재함 용량 (m³)</label><input type="text" value={r.loadCapacity} onChange={(e) => update(r.id, "loadCapacity", e.target.value)} className={fieldCls} placeholder="예: 8" /></div>
+            <div><label className="ptw-label">덤프 최대경사각 (도)</label><input type="text" value={r.dumpAngle} onChange={(e) => update(r.id, "dumpAngle", e.target.value)} className={fieldCls} placeholder="예: 50" /></div>
+            <div><label className="ptw-label">상승시간 (sec)</label><input type="text" value={r.liftTime} onChange={(e) => update(r.id, "liftTime", e.target.value)} className={fieldCls} placeholder="예: 15" /></div>
+            <div><label className="ptw-label">적재함 크기 (L×W×H mm)</label><input type="text" value={r.loadDimensions} onChange={(e) => update(r.id, "loadDimensions", e.target.value)} className={fieldCls} placeholder="예: 5200×2200×600" /></div>
+          </div>
+        </div>
+      ))}
+      <button onClick={() => save([...rows, EMPTY_TRUCK_SPEC_ROW()])}
+        className="text-xs px-4 py-1.5 rounded-lg font-medium transition-all"
+        style={{ background: PRIMARY_LIGHT, color: PRIMARY, border: `1px solid ${PRIMARY}55` }}>
+        + 장비 추가
+      </button>
     </div>
   );
 }
@@ -1418,15 +1731,25 @@ function TruckOverturnForm() {
     "경광등 설치 확인",
     "안전 속도 준수 (20km/h 이하)",
     "과적 여부 확인",
+    "추가 조치 사항",
   ];
   return (
-    <div className="space-y-3">
-      <div className="rounded-xl border border-slate-200 px-4 py-3 space-y-1">
-        {checks.map((c) => (
-          <CheckItem key={c} label={c} checked={(d[c] as boolean) ?? false} onChange={(v) => u(c, v)} />
-        ))}
-      </div>
-      <TextAreaField label="추가 조치 사항" value={(d.note as string) ?? ""} onChange={(v) => u("note", v)} placeholder="기타 조치 사항" rows={2} />
+    <div className="rounded-xl border border-slate-200 px-4 py-3 space-y-1">
+      {checks.map((c) => (
+        <div key={c} className="flex items-center gap-2">
+          <CheckItem label={c} checked={(d[c] as boolean) ?? false} onChange={(v) => u(c, v)} />
+          {c === "추가 조치 사항" && (d[c] as boolean) && (
+            <input
+              type="text"
+              value={(d.note as string) ?? ""}
+              onChange={(e) => u("note", e.target.value)}
+              placeholder="기타 조치 사항 입력"
+              autoFocus
+              className="flex-1 px-3 py-1 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-teal-400"
+            />
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -1517,26 +1840,22 @@ function GraderSpeedForm() {
 function LoaderBucketForm() {
   const [d, u] = useSection<Record<string, string>>("loader_bucket", {});
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <TextField label="버킷 용량 (m³)" value={d.capacity ?? ""} onChange={(v) => u("capacity", v)} placeholder="예: 1.5" type="number" />
-      <TextField label="최대 인양하중 (ton)" value={d.maxLoad ?? ""} onChange={(v) => u("maxLoad", v)} placeholder="예: 3.0" type="number" />
-    </div>
-  );
-}
-
-function LoaderRadiusForm() {
-  const [d, u] = useSection<Record<string, string>>("loader_radius", {});
-  return (
     <div className="space-y-3">
-      <TextField label="최대 작업 반경 (m)" value={d.radius ?? ""} onChange={(v) => u("radius", v)} placeholder="예: 5.0" type="number" />
-      <TextAreaField label="작업 반경 내 장애물" value={d.obstacles ?? ""} onChange={(v) => u("obstacles", v)} placeholder="장애물 현황 기술" rows={2} />
+      <div className="grid grid-cols-4 gap-3">
+        <TextField label="버킷 용량 (m³)" value={d.capacity ?? ""} onChange={(v) => u("capacity", v)} placeholder="예: 1.5" type="number" />
+        <TextField label="최대 인양하중 (ton)" value={d.maxLoad ?? ""} onChange={(v) => u("maxLoad", v)} placeholder="예: 3.0" type="number" />
+        <TextField label="최대 작업 반경 (m)" value={d.radius ?? ""} onChange={(v) => u("radius", v)} placeholder="예: 5.0" type="number" />
+      </div>
+      <div className="grid grid-cols-4 gap-3">
+        <div className="col-span-2">
+          <TextField label="작업 반경 내 장애물" value={d.obstacles ?? ""} onChange={(v) => u("obstacles", v)} placeholder="장애물 현황 기술" />
+        </div>
+        <div className="col-span-2">
+          <TextField label="적재 방법 및 주의사항" value={d.method ?? ""} onChange={(v) => u("method", v)} placeholder="적재 순서, 균형 유지 방법 등" />
+        </div>
+      </div>
     </div>
   );
-}
-
-function LoaderMethodForm() {
-  const [d, u] = useSection<Record<string, string>>("loader_method", {});
-  return <TextAreaField label="적재 방법 및 주의사항" value={d.method ?? ""} onChange={(v) => u("method", v)} placeholder="적재 순서, 균형 유지 방법 등" rows={3} />;
 }
 
 // 스크레이퍼
@@ -1565,15 +1884,15 @@ function CraneCapacityForm() {
   const [d, u] = useSection<Record<string, string>>("crane_capacity", {});
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <TextField label="최대 인양하중 (ton)" value={d.maxLoad ?? ""} onChange={(v) => u("maxLoad", v)} placeholder="예: 25.0" type="number" />
         <TextField label="최대 인양반경 (m)" value={d.maxRadius ?? ""} onChange={(v) => u("maxRadius", v)} placeholder="예: 15.0" type="number" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
         <TextField label="실 인양하중 (ton)" value={d.actualLoad ?? ""} onChange={(v) => u("actualLoad", v)} placeholder="예: 18.0" type="number" />
         <TextField label="실 인양반경 (m)" value={d.actualRadius ?? ""} onChange={(v) => u("actualRadius", v)} placeholder="예: 12.0" type="number" />
       </div>
-      <TextField label="인양각도 (°)" value={d.angle ?? ""} onChange={(v) => u("angle", v)} placeholder="예: 75" type="number" />
+      <div className="grid grid-cols-4 gap-3">
+        <TextField label="인양각도 (°)" value={d.angle ?? ""} onChange={(v) => u("angle", v)} placeholder="예: 75" type="number" />
+      </div>
     </div>
   );
 }
@@ -1582,11 +1901,9 @@ function CraneRiggingForm() {
   const [d, u] = useSection<Record<string, string>>("crane_rigging", {});
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <TextField label="슬링 종류" value={d.slingType ?? ""} onChange={(v) => u("slingType", v)} placeholder="예: 와이어로프 슬링" />
         <TextField label="슬링 수량 (개)" value={d.slingQty ?? ""} onChange={(v) => u("slingQty", v)} placeholder="예: 4" type="number" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
         <TextField label="샤클 규격" value={d.shackleSpec ?? ""} onChange={(v) => u("shackleSpec", v)} placeholder="예: 3T 샤클" />
         <TextField label="샤클 수량 (개)" value={d.shackleQty ?? ""} onChange={(v) => u("shackleQty", v)} placeholder="예: 4" type="number" />
       </div>
@@ -1596,14 +1913,45 @@ function CraneRiggingForm() {
 }
 
 function CraneSwingForm() {
-  const [d, u] = useSection<Record<string, string | boolean>>("crane_swing", {});
-  const checks = ["전력선 유무 확인", "구조물 접촉 위험 확인", "출입 인원 통제 확인", "과부하 방지장치 작동 확인"];
+  const [d, u] = useSection<Record<string, unknown>>("crane_swing", {});
+  const SWING_ITEMS = ["전력선 유무 확인", "구조물 접촉 위험 확인", "출입 인원 통제 확인", "과부하 방지장치 작동 확인", "기타 장애물"];
+  type SwingRow = { checked: boolean; note: string };
+  const rows = d.rows as Record<string, SwingRow> | undefined ?? {};
+  const updateRow = (key: string, field: keyof SwingRow, val: boolean | string) =>
+    u("rows", { ...rows, [key]: { checked: rows[key]?.checked ?? false, note: rows[key]?.note ?? "", [field]: val } });
   return (
-    <div className="space-y-3">
-      <div className="rounded-xl border border-slate-200 px-4 py-3 space-y-1">
-        {checks.map((c) => <CheckItem key={c} label={c} checked={(d[c] as boolean) ?? false} onChange={(v) => u(c, v)} />)}
-      </div>
-      <TextAreaField label="선회 반경 내 장애물 현황" value={(d.note as string) ?? ""} onChange={(v) => u("note", v)} placeholder="장애물 위치 및 처리 방법" rows={2} />
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr style={{ background: PRIMARY_LIGHT }}>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs w-6"></th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs whitespace-nowrap w-44">확인 항목</th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">장애물 위치 및 처리 방법</th>
+          </tr>
+        </thead>
+        <tbody>
+          {SWING_ITEMS.map((item) => {
+            const row = rows[item] ?? { checked: false, note: "" };
+            return (
+              <tr key={item} className="border-t border-slate-100">
+                <td className="px-3 py-2 text-center">
+                  <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                    style={{ background: row.checked ? PRIMARY : "white", borderColor: row.checked ? PRIMARY : "#cbd5e1" }}
+                    onClick={() => updateRow(item, "checked", !row.checked)}
+                  >{row.checked && "✓"}</div>
+                </td>
+                <td className="px-3 py-2 text-xs font-medium whitespace-nowrap w-44" style={{ color: row.checked ? PRIMARY : "#64748b" }}>{item}</td>
+                <td className="px-2 py-1.5">
+                  <input type="text" value={row.note} onChange={(e) => updateRow(item, "note", e.target.value)}
+                    disabled={!row.checked}
+                    className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                    placeholder={row.checked ? "위치 및 처리 방법 기재" : "—"} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -1612,12 +1960,12 @@ function CraneSignalForm() {
   const [d, u] = useSection<Record<string, string>>("crane_signal", {});
   return (
     <div className="space-y-3">
-      <TextField label="신호 방법" value={d.method ?? ""} onChange={(v) => u("method", v)} placeholder="예: 무전기 + 수신호 병행" />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-4 gap-3">
+        <TextField label="신호 방법" value={d.method ?? ""} onChange={(v) => u("method", v)} placeholder="예: 무전기 + 수신호" />
         <TextField label="신호수 이름" value={d.signalPerson ?? ""} onChange={(v) => u("signalPerson", v)} placeholder="홍길동" />
         <TextField label="신호수 배치 위치" value={d.position ?? ""} onChange={(v) => u("position", v)} placeholder="예: 인양물 북측" />
+        <TextField label="비상 신호 방법" value={d.emergency ?? ""} onChange={(v) => u("emergency", v)} placeholder="비상 중지 신호 등" />
       </div>
-      <TextAreaField label="비상 신호 방법" value={d.emergency ?? ""} onChange={(v) => u("emergency", v)} placeholder="비상 중지 신호 등" rows={2} />
     </div>
   );
 }
@@ -1627,11 +1975,15 @@ function CraneGroundForm() {
   const checks = ["지내력 확인 (지반조사 결과)", "아웃트리거 설치 위치 확인", "아웃트리거 하부 철판 설치", "연약지반 보강 조치"];
   return (
     <div className="space-y-3">
+      <div className="grid grid-cols-4 gap-3 items-end">
+        <TextField label="지내력 (kN/m²)" value={(d.bearing as string) ?? ""} onChange={(v) => u("bearing", v)} placeholder="예: 150" type="number" />
+        <div className="col-span-3">
+          <TextField label="지반 보강 방법" value={(d.reinforcement as string) ?? ""} onChange={(v) => u("reinforcement", v)} placeholder="지반 보강 조치 내용" />
+        </div>
+      </div>
       <div className="rounded-xl border border-slate-200 px-4 py-3 space-y-1">
         {checks.map((c) => <CheckItem key={c} label={c} checked={(d[c] as boolean) ?? false} onChange={(v) => u(c, v)} />)}
       </div>
-      <TextField label="지내력 (kN/m²)" value={(d.bearing as string) ?? ""} onChange={(v) => u("bearing", v)} placeholder="예: 150" type="number" />
-      <TextAreaField label="지반 보강 방법" value={(d.reinforcement as string) ?? ""} onChange={(v) => u("reinforcement", v)} placeholder="지반 보강 조치 내용" rows={2} />
     </div>
   );
 }
@@ -1640,87 +1992,141 @@ function CraneGroundForm() {
 function ExcavatorDepthForm() {
   const [d, u] = useSection<Record<string, string>>("excavator_depth", {});
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <TextField label="최대 굴착 깊이 (m)" value={d.depth ?? ""} onChange={(v) => u("depth", v)} placeholder="예: 3.5" type="number" />
-        <TextField label="굴착 기울기 (구배)" value={d.slope ?? ""} onChange={(v) => u("slope", v)} placeholder="예: 1:1" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <TextField label="굴착 폭 (m)" value={d.width ?? ""} onChange={(v) => u("width", v)} placeholder="예: 4.0" type="number" />
-        <TextField label="굴착 연장 (m)" value={d.length ?? ""} onChange={(v) => u("length", v)} placeholder="예: 50" type="number" />
-      </div>
+    <div className="grid grid-cols-4 gap-3">
+      <TextField label="최대 굴착 깊이 (m)" value={d.depth ?? ""} onChange={(v) => u("depth", v)} placeholder="예: 3.5" type="number" />
+      <TextField label="굴착 기울기 (구배)" value={d.slope ?? ""} onChange={(v) => u("slope", v)} placeholder="예: 1:1" />
+      <TextField label="굴착 폭 (m)" value={d.width ?? ""} onChange={(v) => u("width", v)} placeholder="예: 4.0" type="number" />
+      <TextField label="굴착 연장 (m)" value={d.length ?? ""} onChange={(v) => u("length", v)} placeholder="예: 50" type="number" />
     </div>
   );
 }
 
 function ExcavatorGroundForm() {
-  const [d, u] = useSection<Record<string, string>>("excavator_ground", {});
-  const soilTypes = ["점토", "실트", "사질토", "자갈", "풍화암", "연암", "경암"];
+  const [d, u] = useSection<Record<string, unknown>>("excavator_ground", {});
+  const soilTypes = ["점토", "실트", "사질토", "자갈", "풍화암", "연암", "경암", "기타"];
+  const selected: string[] = Array.isArray(d.soilTypes) ? (d.soilTypes as string[]) : [];
+  const toggleSoil = (t: string) => {
+    const next = selected.includes(t) ? selected.filter((s) => s !== t) : [...selected, t];
+    u("soilTypes", next);
+  };
+  const hasOther = selected.includes("기타");
   return (
-    <div className="space-y-3">
-      <div>
-        <label className="block text-sm font-medium text-slate-600 mb-1">토질 분류</label>
+    <div className="grid grid-cols-4 gap-3 items-end">
+      <div className="col-span-2">
+        <label className="block text-sm font-medium text-slate-600 mb-1">토질 분류 (복수 선택 가능)</label>
         <div className="flex flex-wrap gap-2">
-          {soilTypes.map((t) => (
-            <button
-              key={t}
-              onClick={() => u("soilType", t)}
-              className="text-xs px-3 py-1.5 rounded-full border transition-all"
-              style={{
-                background: d.soilType === t ? PRIMARY : "white",
-                borderColor: d.soilType === t ? PRIMARY : "#e2e8f0",
-                color: d.soilType === t ? "white" : "#64748b",
-              }}
-            >
-              {t}
-            </button>
-          ))}
+          {soilTypes.map((t) => {
+            const active = selected.includes(t);
+            return (
+              <button key={t} onClick={() => toggleSoil(t)} className="text-xs px-3 py-1.5 rounded-full border transition-all"
+                style={{ background: active ? PRIMARY : "white", borderColor: active ? PRIMARY : "#e2e8f0", color: active ? "white" : "#64748b" }}>
+                {t}
+              </button>
+            );
+          })}
         </div>
+        {hasOther && (
+          <input type="text" value={(d.soilTypeOther as string) ?? ""} onChange={(e) => u("soilTypeOther", e.target.value)}
+            className="mt-2 w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400"
+            placeholder="토질 종류 직접 입력" />
+        )}
       </div>
-      <TextAreaField label="토질조사 결과" value={d.surveyResult ?? ""} onChange={(v) => u("surveyResult", v)} placeholder="지반조사 결과, 지하수위 등" rows={3} />
+      <div className="col-span-2">
+        <TextField label="토질조사 결과" value={(d.surveyResult as string) ?? ""} onChange={(v) => u("surveyResult", v)} placeholder="지반조사 결과, 지하수위 등" />
+      </div>
     </div>
   );
 }
 
 function ExcavatorUtilityForm() {
-  const [d, u] = useSection<Record<string, boolean | string>>("excavator_utility", {});
-  const checks = ["도시가스관", "상수도관", "하수도관", "전력케이블 (지중)", "통신케이블", "난방배관", "기타 매설물"];
+  const [d, u] = useSection<Record<string, unknown>>("excavator_utility", {});
+  const UTILITY_TYPES = ["도시가스관", "상수도관", "하수도관", "전력케이블 (지중)", "통신케이블", "난방배관", "기타 매설물"];
+  type UtilityRow = { checked: boolean; note: string };
+  const rows = d.rows as Record<string, UtilityRow> | undefined ?? {};
+  const updateRow = (key: string, field: keyof UtilityRow, val: boolean | string) =>
+    u("rows", { ...rows, [key]: { checked: rows[key]?.checked ?? false, note: rows[key]?.note ?? "", [field]: val } });
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-slate-500">매설물 사전 확인 및 방호 조치</p>
-      <div className="rounded-xl border border-slate-200 px-4 py-3 space-y-1">
-        {checks.map((c) => <CheckItem key={c} label={c} checked={(d[c] as boolean) ?? false} onChange={(v) => u(c, v)} />)}
-      </div>
-      <TextAreaField label="매설물 확인 내용 및 조치" value={(d.note as string) ?? ""} onChange={(v) => u("note", v)} placeholder="관리기관 연락, 탐지 결과, 방호 방법 등" rows={3} />
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr style={{ background: PRIMARY_LIGHT }}>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs w-6"></th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs whitespace-nowrap w-32">매설물 종류</th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">확인 내용 및 조치</th>
+          </tr>
+        </thead>
+        <tbody>
+          {UTILITY_TYPES.map((type) => {
+            const row = rows[type] ?? { checked: false, note: "" };
+            return (
+              <tr key={type} className="border-t border-slate-100">
+                <td className="px-3 py-2 text-center">
+                  <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                    style={{ background: row.checked ? PRIMARY : "white", borderColor: row.checked ? PRIMARY : "#cbd5e1" }}
+                    onClick={() => updateRow(type, "checked", !row.checked)}
+                  >{row.checked && "✓"}</div>
+                </td>
+                <td className="px-3 py-2 text-xs font-medium whitespace-nowrap w-32" style={{ color: row.checked ? PRIMARY : "#64748b" }}>{type}</td>
+                <td className="px-2 py-1.5">
+                  <input type="text" value={row.note} onChange={(e) => updateRow(type, "note", e.target.value)}
+                    disabled={!row.checked}
+                    className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                    placeholder={row.checked ? "관리기관 연락, 탐지 결과, 방호 방법 등" : "—"} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function ExcavatorRetainingForm() {
-  const [d, u] = useSection<Record<string, string>>("excavator_retaining", {});
-  const methods = ["엄지말뚝 + 토류판", "시트파일", "CIP (현장타설말뚝)", "SCW", "흙막이 불필요"];
+  const [d, u] = useSection<Record<string, string | string[]>>("excavator_retaining", {});
+  const methods = ["엄지말뚝 + 토류판", "시트파일", "CIP (현장타설말뚝)", "SCW", "흙막이 불필요", "기타"];
+  const attachments = ["버킷", "브레이커", "크램셸", "인양용 달기구", "기타"];
+  const selectedAttach: string[] = Array.isArray(d.attachments) ? (d.attachments as string[]) : [];
+  const toggleAttach = (item: string) =>
+    u("attachments", selectedAttach.includes(item) ? selectedAttach.filter((v) => v !== item) : [...selectedAttach, item]);
   return (
     <div className="space-y-3">
-      <div>
-        <label className="block text-sm font-medium text-slate-600 mb-1">흙막이 공법</label>
-        <div className="flex flex-wrap gap-2">
-          {methods.map((m) => (
-            <button
-              key={m}
-              onClick={() => u("method", m)}
-              className="text-xs px-3 py-1.5 rounded-full border transition-all"
-              style={{
-                background: d.method === m ? PRIMARY : "white",
-                borderColor: d.method === m ? PRIMARY : "#e2e8f0",
-                color: d.method === m ? "white" : "#64748b",
-              }}
-            >
-              {m}
-            </button>
-          ))}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">흙막이 공법</label>
+          <div className="flex flex-wrap items-center gap-2">
+            {methods.map((m) => (
+              <button key={m} onClick={() => u("method", m === d.method ? "" : m)} className="text-xs px-3 py-1.5 rounded-full border transition-all"
+                style={{ background: d.method === m ? PRIMARY : "white", borderColor: d.method === m ? PRIMARY : "#e2e8f0", color: d.method === m ? "white" : "#64748b" }}>
+                {m}
+              </button>
+            ))}
+            {d.method === "기타" && (
+              <input type="text" value={(d.methodCustom as string) ?? ""} onChange={(e) => u("methodCustom", e.target.value)}
+                className="px-3 py-1.5 border border-slate-200 rounded-full text-xs outline-none focus:border-teal-400 w-40"
+                placeholder="공법명 직접 입력" autoFocus />
+            )}
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">작업장치 선택</label>
+          <div className="flex flex-wrap items-center gap-2">
+            {attachments.map((item) => (
+              <button key={item} type="button" onClick={() => toggleAttach(item)}
+                className="text-xs px-3 py-1.5 rounded-full border transition-all"
+                style={{ background: selectedAttach.includes(item) ? PRIMARY : "white", borderColor: selectedAttach.includes(item) ? PRIMARY : "#e2e8f0", color: selectedAttach.includes(item) ? "white" : "#64748b" }}>
+                {item}
+              </button>
+            ))}
+            {selectedAttach.includes("기타") && (
+              <input type="text" value={(d.attachmentCustom as string) ?? ""} onChange={(e) => u("attachmentCustom", e.target.value)}
+                placeholder="장치명 직접 입력" autoFocus
+                className="px-3 py-1.5 border border-slate-200 rounded-full text-xs focus:outline-none focus:border-teal-400 w-40" />
+            )}
+          </div>
         </div>
       </div>
-      <TextAreaField label="흙막이 설계 및 시공 특이사항" value={d.note ?? ""} onChange={(v) => u("note", v)} placeholder="흙막이 공법 상세, 계측 계획 등" rows={3} />
+      <TextAreaField label="흙막이 설계 및 시공 특이사항" value={(d.note as string) ?? ""} onChange={(v) => u("note", v)} placeholder="흙막이 공법 상세, 계측 계획 등" rows={3} />
     </div>
   );
 }
@@ -1728,16 +2134,16 @@ function ExcavatorRetainingForm() {
 // 항타·항발기
 function PileMethodForm() {
   const [d, u] = useSection<Record<string, string>>("pile_method", {});
-  const methods = ["디젤해머", "유압해머", "바이브로해머", "오거 (매입공법)", "SIP 공법", "PRD 공법"];
+  const methods = ["디젤해머", "유압해머", "바이브로해머", "오거 (매입공법)", "SIP 공법", "PRD 공법", "기타"];
   return (
     <div className="space-y-3">
       <div>
         <label className="block text-sm font-medium text-slate-600 mb-1">항타 공법</label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {methods.map((m) => (
             <button
               key={m}
-              onClick={() => u("method", m)}
+              onClick={() => u("method", m === d.method ? "" : m)}
               className="text-xs px-3 py-1.5 rounded-full border transition-all"
               style={{
                 background: d.method === m ? PRIMARY : "white",
@@ -1748,6 +2154,16 @@ function PileMethodForm() {
               {m}
             </button>
           ))}
+          {d.method === "기타" && (
+            <input
+              type="text"
+              value={d.methodCustom ?? ""}
+              onChange={(e) => u("methodCustom", e.target.value)}
+              placeholder="공법명 직접 입력"
+              autoFocus
+              className="px-3 py-1.5 border border-slate-200 rounded-full text-xs focus:outline-none focus:border-teal-400 w-40"
+            />
+          )}
         </div>
       </div>
       <TextAreaField label="공법 상세" value={d.detail ?? ""} onChange={(v) => u("detail", v)} placeholder="항타 에너지, 타격 회수 등" rows={2} />
@@ -1757,33 +2173,35 @@ function PileMethodForm() {
 
 function PileTypeForm() {
   const [d, u] = useSection<Record<string, string>>("pile_type", {});
-  const types = ["PHC파일", "강관파일", "H-파일", "RC파일", "목파일"];
+  const types = ["PHC파일", "강관파일", "H-파일", "RC파일", "목파일", "기타"];
   return (
     <div className="space-y-3">
       <div>
         <label className="block text-sm font-medium text-slate-600 mb-1">파일 종류</label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {types.map((t) => (
-            <button
-              key={t}
-              onClick={() => u("type", t)}
-              className="text-xs px-3 py-1.5 rounded-full border transition-all"
-              style={{
-                background: d.type === t ? PRIMARY : "white",
-                borderColor: d.type === t ? PRIMARY : "#e2e8f0",
-                color: d.type === t ? "white" : "#64748b",
-              }}
-            >
+            <button key={t} onClick={() => u("type", t === d.type ? "" : t)} className="text-xs px-3 py-1.5 rounded-full border transition-all"
+              style={{ background: d.type === t ? PRIMARY : "white", borderColor: d.type === t ? PRIMARY : "#e2e8f0", color: d.type === t ? "white" : "#64748b" }}>
               {t}
             </button>
           ))}
+          {d.type === "기타" && (
+            <input
+              type="text"
+              value={d.typeCustom ?? ""}
+              onChange={(e) => u("typeCustom", e.target.value)}
+              placeholder="파일 종류 직접 입력"
+              autoFocus
+              className="px-3 py-1.5 border border-slate-200 rounded-full text-xs focus:outline-none focus:border-teal-400 w-40"
+            />
+          )}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <TextField label="규격 (mm)" value={d.spec ?? ""} onChange={(v) => u("spec", v)} placeholder="예: φ400" />
         <TextField label="길이 (m)" value={d.length ?? ""} onChange={(v) => u("length", v)} placeholder="예: 12" type="number" />
+        <TextField label="본수 (본)" value={d.count ?? ""} onChange={(v) => u("count", v)} placeholder="예: 50" type="number" />
       </div>
-      <TextField label="본수 (본)" value={d.count ?? ""} onChange={(v) => u("count", v)} placeholder="예: 50" type="number" />
     </div>
   );
 }
@@ -1793,14 +2211,16 @@ function PileNoiseForm() {
   const checks = ["소음 측정 실시 계획", "방음벽 설치", "진동 모니터링 계획", "인접 구조물 안전 확인", "주민 민원 대응 계획"];
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-4 gap-3 items-end">
         <TextField label="소음 기준 (dB)" value={(d.noiseLimit as string) ?? ""} onChange={(v) => u("noiseLimit", v)} placeholder="예: 75" type="number" />
         <TextField label="진동 기준 (cm/s)" value={(d.vibrationLimit as string) ?? ""} onChange={(v) => u("vibrationLimit", v)} placeholder="예: 0.2" type="number" />
+        <div className="col-span-2">
+          <TextField label="소음·진동 저감 방법" value={(d.note as string) ?? ""} onChange={(v) => u("note", v)} placeholder="저감 대책 및 관리 방법" />
+        </div>
       </div>
       <div className="rounded-xl border border-slate-200 px-4 py-3 space-y-1">
         {checks.map((c) => <CheckItem key={c} label={c} checked={(d[c] as boolean) ?? false} onChange={(v) => u(c, v)} />)}
       </div>
-      <TextAreaField label="소음·진동 저감 방법" value={(d.note as string) ?? ""} onChange={(v) => u("note", v)} placeholder="저감 대책 및 관리 방법" rows={2} />
     </div>
   );
 }
@@ -1810,17 +2230,19 @@ function RollerSectionForm() {
   const [d, u] = useSection<Record<string, string>>("roller_section", {});
   return (
     <div className="space-y-3">
-      <TextAreaField label="다짐 구간" value={d.section ?? ""} onChange={(v) => u("section", v)} placeholder="다짐 시점 ~ 종점, 구간 설명" rows={2} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-4 gap-3 items-end">
         <TextField label="다짐 면적 (m²)" value={d.area ?? ""} onChange={(v) => u("area", v)} placeholder="예: 1500" type="number" />
         <TextField label="층별 다짐 두께 (cm)" value={d.thickness ?? ""} onChange={(v) => u("thickness", v)} placeholder="예: 20" type="number" />
+        <div className="col-span-2">
+          <TextField label="다짐 구간" value={d.section ?? ""} onChange={(v) => u("section", v)} placeholder="다짐 시점 ~ 종점, 구간 설명" />
+        </div>
       </div>
     </div>
   );
 }
 
 function RollerCountForm() {
-  const [d, u] = useSection<Record<string, string>>("roller_count", {});
+  const [d, u] = useSection<Record<string, string | boolean>>("roller_count", {});
   const methods = ["진동 다짐", "정적 다짐", "타이어 다짐", "진동+정적 병행"];
   return (
     <div className="space-y-3">
@@ -1828,24 +2250,18 @@ function RollerCountForm() {
         <label className="block text-sm font-medium text-slate-600 mb-1">다짐 방법</label>
         <div className="flex flex-wrap gap-2">
           {methods.map((m) => (
-            <button
-              key={m}
-              onClick={() => u("method", m)}
-              className="text-xs px-3 py-1.5 rounded-full border transition-all"
-              style={{
-                background: d.method === m ? PRIMARY : "white",
-                borderColor: d.method === m ? PRIMARY : "#e2e8f0",
-                color: d.method === m ? "white" : "#64748b",
-              }}
-            >
+            <button key={m} onClick={() => u("method", m)} className="text-xs px-3 py-1.5 rounded-full border transition-all"
+              style={{ background: d.method === m ? PRIMARY : "white", borderColor: d.method === m ? PRIMARY : "#e2e8f0", color: d.method === m ? "white" : "#64748b" }}>
               {m}
             </button>
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <TextField label="다짐 횟수 (회)" value={d.count ?? ""} onChange={(v) => u("count", v)} placeholder="예: 6" type="number" />
-        <TextField label="다짐 속도 (km/h)" value={d.speed ?? ""} onChange={(v) => u("speed", v)} placeholder="예: 3" type="number" />
+      <div className="grid grid-cols-4 gap-3">
+        <TextField label="다짐 횟수 (회)" value={(d.count as string) ?? ""} onChange={(v) => u("count", v)} placeholder="예: 6" type="number" />
+        <TextField label="다짐 속도 (km/h)" value={(d.speed as string) ?? ""} onChange={(v) => u("speed", v)} placeholder="예: 3" type="number" />
+        <TextField label="목표 다짐도 (%)" value={((d.targetDensity as string) ?? "")} onChange={(v) => u("targetDensity", v)} placeholder="예: 95" type="number" />
+        <TextField label="시험 빈도" value={((d.testFreq as string) ?? "")} onChange={(v) => u("testFreq", v)} placeholder="예: 500m²당 1회" />
       </div>
     </div>
   );
@@ -1856,10 +2272,6 @@ function RollerCompactionForm() {
   const checks = ["현장밀도시험 계획 수립", "다짐 관리 기준 확인", "함수비 관리 계획"];
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <TextField label="목표 다짐도 (%)" value={(d.targetDensity as string) ?? ""} onChange={(v) => u("targetDensity", v)} placeholder="예: 95" type="number" />
-        <TextField label="시험 빈도" value={(d.testFreq as string) ?? ""} onChange={(v) => u("testFreq", v)} placeholder="예: 500m²당 1회" />
-      </div>
       <div className="rounded-xl border border-slate-200 px-4 py-3 space-y-1">
         {checks.map((c) => <CheckItem key={c} label={c} checked={(d[c] as boolean) ?? false} onChange={(v) => u(c, v)} />)}
       </div>
@@ -1875,10 +2287,9 @@ function WorkDescriptionForm() {
   const [d, u] = useSection<WorkDescriptionData>("work_description", {});
   return (
     <div className="space-y-4">
-      <TextAreaField label="작업 목적" value={d.purpose ?? ""} onChange={(v) => u("purpose", v)} rows={4} placeholder="작업을 수행하는 목적을 기술하세요" />
+      <TextAreaField label="작업 목적" value={d.purpose ?? ""} onChange={(v) => u("purpose", v)} rows={3} placeholder="작업을 수행하는 목적을 기술하세요" />
       <TextAreaField label="작업 세부내용" value={d.details ?? ""} onChange={(v) => u("details", v)} rows={4} placeholder="작업의 세부 내용을 기술하세요" />
       <TextAreaField label="작업 범위" value={d.scope ?? ""} onChange={(v) => u("scope", v)} rows={3} placeholder="작업의 범위와 경계를 기술하세요" />
-      <TextAreaField label="작업 방법" value={d.method ?? ""} onChange={(v) => u("method", v)} rows={3} placeholder="작업 수행 방법을 기술하세요" />
     </div>
   );
 }
@@ -1899,68 +2310,18 @@ function WorkEnvironmentForm() {
         <TextField label="환기상태" value={d.ventilation ?? ""} onChange={(v) => u("ventilation", v)} placeholder="예: 양호" />
         <TextField label="조도" value={d.lighting ?? ""} onChange={(v) => u("lighting", v)} placeholder="예: 300lux" />
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <TextField label="소음도" value={d.noiseLevel ?? ""} onChange={(v) => u("noiseLevel", v)} placeholder="예: 75dB" />
         <TextField label="주변 안전상태" value={d.surroundingSafety ?? ""} onChange={(v) => u("surroundingSafety", v)} placeholder="예: 양호" />
-        <TextField label="진입로 상태" value={d.accessRoute ?? ""} onChange={(v) => u("accessRoute", v)} placeholder="예: 포장도로" />
+        <div className="col-span-2">
+          <TextField label="진입로 상태" value={d.accessRoute ?? ""} onChange={(v) => u("accessRoute", v)} placeholder="예: 포장도로" />
+        </div>
       </div>
-      <TextAreaField label="특수 상황" value={d.specialConditions ?? ""} onChange={(v) => u("specialConditions", v)} rows={3} placeholder="특수한 작업 환경 조건을 기술하세요" />
+      <TextAreaField label="상세내용" value={d.specialConditions ?? ""} onChange={(v) => u("specialConditions", v)} rows={4} placeholder="작업 현장의 환경 및 상황을 기술하세요 (예: 지하 2층 밀폐공간, 우천·야간 작업 여부, 인접 구조물 현황, 통행 제한 여부 등)" />
     </div>
   );
 }
 
-// ─── 운전원·유도자·지휘자 ─────────────────────────────────────────
-interface OperatorRow { id: string; role: string; name: string; licenseType: string; licenseNo: string; contact: string; trained: boolean }
-interface OperatorsData { rows?: OperatorRow[] }
-
-function OperatorsForm() {
-  const { formData, updateFormData } = useWorkPlanStore();
-  const data = (formData["operators"] as OperatorsData) ?? {};
-  const rows: OperatorRow[] = data.rows ?? [{ id: "op1", role: "운전원", name: "", licenseType: "", licenseNo: "", contact: "", trained: false }];
-  const updateRow = (id: string, key: keyof OperatorRow, value: string | boolean) =>
-    updateFormData("operators", { rows: rows.map((r) => r.id === id ? { ...r, [key]: value } : r) });
-  const addRow = () =>
-    updateFormData("operators", { rows: [...rows, { id: `op${Date.now()}`, role: "운전원", name: "", licenseType: "", licenseNo: "", contact: "", trained: false }] });
-  const removeRow = (id: string) =>
-    updateFormData("operators", { rows: rows.filter((r) => r.id !== id) });
-  return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr style={{ background: PRIMARY_LIGHT }}>
-            {["역할", "이름", "면허종류", "면허번호", "연락처", "교육이수", ""].map((h) => (
-              <th key={h} className="px-3 py-2 text-left font-medium text-slate-600 text-xs">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.id} className="border-t border-slate-100">
-              <td className="px-2 py-1">
-                <select value={r.role} onChange={(e) => updateRow(r.id, "role", e.target.value)} className="px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400">
-                  <option>운전원</option><option>유도자</option><option>작업지휘자</option><option>감시자</option>
-                </select>
-              </td>
-              <td className="px-2 py-1"><input type="text" value={r.name} onChange={(e) => updateRow(r.id, "name", e.target.value)} className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="홍길동" /></td>
-              <td className="px-2 py-1"><input type="text" value={r.licenseType} onChange={(e) => updateRow(r.id, "licenseType", e.target.value)} className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="건설기계" /></td>
-              <td className="px-2 py-1"><input type="text" value={r.licenseNo} onChange={(e) => updateRow(r.id, "licenseNo", e.target.value)} className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="00-000000-00" /></td>
-              <td className="px-2 py-1"><input type="tel" value={r.contact} onChange={(e) => updateRow(r.id, "contact", e.target.value)} className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" placeholder="010-0000-0000" /></td>
-              <td className="px-2 py-1 text-center">
-                <div
-                  className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
-                  style={{ background: r.trained ? PRIMARY : "white", borderColor: r.trained ? PRIMARY : "#cbd5e1" }}
-                  onClick={() => updateRow(r.id, "trained", !r.trained)}
-                >{r.trained && "✓"}</div>
-              </td>
-              <td className="px-2 py-1"><button onClick={() => removeRow(r.id)} className="text-slate-300 hover:text-red-400 text-sm px-1">✕</button></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="px-3 py-2 border-t border-slate-100"><button onClick={addRow} className="text-xs text-slate-400 hover:text-teal-500">+ 행 추가</button></div>
-    </div>
-  );
-}
 
 // ─── 기계 제원 (장비별 전용, 팩토리 패턴) ───────────────────────
 interface AdditionalPart { id: string; partName: string; material: string; ratedLoad: string; method: string }
@@ -1972,7 +2333,9 @@ interface MachineRow {
   capacity: string; dimensions: string; year: string; note: string;
   workRadius: string;
   inspectionExpiry: string; inspectionNA: boolean;
-  insuranceStart: string; insuranceEnd: string; insuranceNA: boolean;
+  insuranceNA: boolean;      // 해당없음
+  insuranceTypeName: string; // 보험 종류
+  insuranceEnd: string;      // 보험 유효기간 (까지)
   additionalParts: AdditionalPart[];
 }
 interface MachineSpecData { rows?: MachineRow[] }
@@ -1981,7 +2344,7 @@ const EMPTY_MACHINE_ROW = (): MachineRow => ({
   id: `ms${Date.now()}`, machineName: "", equipmentTypeName: "", regNo: "", maker: "",
   model: "", capacity: "", dimensions: "", year: "", note: "",
   workRadius: "", inspectionExpiry: "", inspectionNA: false,
-  insuranceStart: "", insuranceEnd: "", insuranceNA: false,
+  insuranceNA: false, insuranceTypeName: "", insuranceEnd: "",
   additionalParts: [],
 });
 
@@ -2027,11 +2390,7 @@ function makeMachineSpecForm(sectionId: string) {
 
     return (
       <div className="space-y-3">
-        {rows.length > 0 && (
-          <p className="text-xs text-slate-400">{rows.length}대 입력됨</p>
-        )}
-
-        {rows.length === 0 && (
+        {rows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200 py-6 flex flex-col items-center gap-2">
             <p className="text-xs text-slate-400">기계 제원을 입력하려면 아래 버튼을 누르세요</p>
             <button
@@ -2042,11 +2401,8 @@ function makeMachineSpecForm(sectionId: string) {
               + 기계 추가
             </button>
           </div>
-        )}
-
-        {rows.map((r) => (
-          <div key={r.id} className="rounded-xl border border-slate-200 overflow-hidden">
-            {/* 기본 정보 행 */}
+        ) : (
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -2057,121 +2413,123 @@ function makeMachineSpecForm(sectionId: string) {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-t border-slate-100">
-                    {(["machineName","equipmentTypeName","regNo","maker","model","capacity","dimensions","year","note"] as (keyof MachineRow)[]).map((key) => (
-                      <td key={key} className="px-2 py-1">
-                        <input
-                          type="text"
-                          value={r[key] as string}
-                          onChange={(e) => updateRow(r.id, key, e.target.value)}
-                          className="w-full min-w-14 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400"
-                        />
-                      </td>
-                    ))}
-                    <td className="px-2 py-1 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => toggleExpand(r.id)}
-                          className="text-xs px-2 py-0.5 rounded-lg font-medium transition-colors"
-                          style={{ background: expandedRows[r.id] ? `${PRIMARY}15` : "#f1f5f9", color: expandedRows[r.id] ? PRIMARY : "#64748b" }}
-                        >
-                          {expandedRows[r.id] ? "▲" : "▼ 추가"}
-                        </button>
-                        <button onClick={() => removeRow(r.id)} className="text-slate-300 hover:text-red-400 text-sm px-1">✕</button>
-                      </div>
-                    </td>
-                  </tr>
+                  {rows.map((r) => (
+                    <React.Fragment key={r.id}>
+                      <tr className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
+                        {(["machineName","equipmentTypeName","regNo","maker","model","capacity","dimensions","year","note"] as (keyof MachineRow)[]).map((key) => (
+                          <td key={key} className="px-2 py-1">
+                            <input
+                              type="text"
+                              value={r[key] as string}
+                              onChange={(e) => updateRow(r.id, key, e.target.value)}
+                              className="w-full min-w-14 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400"
+                            />
+                          </td>
+                        ))}
+                        <td className="px-2 py-1 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => toggleExpand(r.id)}
+                              className="text-xs px-2 py-0.5 rounded-lg font-medium transition-colors"
+                              style={{ background: expandedRows[r.id] ? `${PRIMARY}15` : "#f1f5f9", color: expandedRows[r.id] ? PRIMARY : "#64748b" }}
+                            >
+                              {expandedRows[r.id] ? "▲" : "▼ 추가"}
+                            </button>
+                            <button onClick={() => removeRow(r.id)} className="text-slate-300 hover:text-red-400 text-sm px-1">✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedRows[r.id] && (
+                        <tr className="border-t border-slate-100">
+                          <td colSpan={10} className="p-3" style={{ background: "#fafcff" }}>
+                            <div className="space-y-3">
+                              {/* 작업반경 + 점검/검사유효기간 + 보험 */}
+                              <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                  <label className="ptw-label">작업반경</label>
+                                  <input type="text" value={r.workRadius} onChange={(e) => updateRow(r.id, "workRadius", e.target.value)} placeholder="예: 5m" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <label className="ptw-label mb-0">점검/검사 유효기간</label>
+                                    <label className="flex items-center gap-1 cursor-pointer">
+                                      <div
+                                        className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center text-white"
+                                        style={{ background: r.inspectionNA ? PRIMARY : "white", borderColor: r.inspectionNA ? PRIMARY : "#cbd5e1", fontSize: "0.55rem" }}
+                                        onClick={() => updateRow(r.id, "inspectionNA", !r.inspectionNA)}
+                                      >{r.inspectionNA && "✓"}</div>
+                                      <span className="text-xs text-slate-400">해당없음</span>
+                                    </label>
+                                  </div>
+                                  <input type="date" value={r.inspectionNA ? "" : r.inspectionExpiry} disabled={r.inspectionNA} onChange={(e) => updateRow(r.id, "inspectionExpiry", e.target.value)} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <label className="ptw-label mb-0">보험 여부 / 유효기간</label>
+                                    <label className="flex items-center gap-1 cursor-pointer">
+                                      <div
+                                        className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center text-white"
+                                        style={{ background: r.insuranceNA ? PRIMARY : "white", borderColor: r.insuranceNA ? PRIMARY : "#cbd5e1", fontSize: "0.55rem" }}
+                                        onClick={() => updateRow(r.id, "insuranceNA", !r.insuranceNA)}
+                                      >{r.insuranceNA && "✓"}</div>
+                                      <span className="text-xs text-slate-400">해당없음</span>
+                                    </label>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <input type="text" value={r.insuranceNA ? "" : r.insuranceTypeName} disabled={r.insuranceNA} onChange={(e) => updateRow(r.id, "insuranceTypeName", e.target.value)}
+                                      placeholder="보험 종류" className="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300" />
+                                    <input type="date" value={r.insuranceNA ? "" : r.insuranceEnd} disabled={r.insuranceNA} onChange={(e) => updateRow(r.id, "insuranceEnd", e.target.value)}
+                                      className="shrink-0 px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300" />
+                                  </div>
+                                </div>
+                              </div>
+                              {/* 추가 설치부품 */}
+                              <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="text-xs font-semibold text-slate-500">상세규격 / 추가 설치부품</span>
+                                  <button onClick={() => addPart(r.id)} className="text-xs text-slate-400 hover:text-teal-500">+ 부품 추가</button>
+                                </div>
+                                {(r.additionalParts ?? []).length > 0 ? (
+                                  <div className="rounded-lg border border-slate-200 overflow-hidden">
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr style={{ background: PRIMARY_LIGHT }}>
+                                          {["설치부품 명칭", "재료/규격", "정격하중", "방법", ""].map((h) => (
+                                            <th key={h} className="px-2 py-1.5 text-left font-medium text-slate-600 whitespace-nowrap">{h}</th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {(r.additionalParts ?? []).map((p) => (
+                                          <tr key={p.id} className="border-t border-slate-100">
+                                            <td className="px-2 py-1"><input type="text" value={p.partName} onChange={(e) => updatePart(r.id, p.id, "partName", e.target.value)} className="w-full min-w-20 px-2 py-1 border border-slate-200 rounded text-xs outline-none focus:border-teal-400" placeholder="예: 오거드릴" /></td>
+                                            <td className="px-2 py-1"><input type="text" value={p.material} onChange={(e) => updatePart(r.id, p.id, "material", e.target.value)} className="w-full min-w-20 px-2 py-1 border border-slate-200 rounded text-xs outline-none focus:border-teal-400" placeholder="예: φ600mm" /></td>
+                                            <td className="px-2 py-1"><input type="text" value={p.ratedLoad} onChange={(e) => updatePart(r.id, p.id, "ratedLoad", e.target.value)} className="w-24 px-2 py-1 border border-slate-200 rounded text-xs outline-none focus:border-teal-400" placeholder="예: 5t" /></td>
+                                            <td className="px-2 py-1"><input type="text" value={p.method} onChange={(e) => updatePart(r.id, p.id, "method", e.target.value)} className="w-full min-w-16 px-2 py-1 border border-slate-200 rounded text-xs outline-none focus:border-teal-400" placeholder="설치 방법" /></td>
+                                            <td className="px-2 py-1"><button onClick={() => removePart(r.id, p.id)} className="text-slate-300 hover:text-red-400 px-1">✕</button></td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-slate-300 py-1">+ 부품 추가를 눌러 설치부품을 입력하세요</p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
                 </tbody>
               </table>
             </div>
-
-            {/* 추가 정보 패널 */}
-            {expandedRows[r.id] && (
-              <div className="p-3 space-y-3 border-t border-slate-100 anim-fade-in-up" style={{ background: "#fafcff" }}>
-                {/* 작업반경 + 점검/검사유효기간 + 가입보험기간 */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="ptw-label">작업반경</label>
-                    <input type="text" value={r.workRadius} onChange={(e) => updateRow(r.id, "workRadius", e.target.value)} placeholder="예: 5m" className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="ptw-label mb-0">점검/검사 유효기간</label>
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <div
-                          className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center text-white"
-                          style={{ background: r.inspectionNA ? PRIMARY : "white", borderColor: r.inspectionNA ? PRIMARY : "#cbd5e1", fontSize: "0.55rem" }}
-                          onClick={() => updateRow(r.id, "inspectionNA", !r.inspectionNA)}
-                        >{r.inspectionNA && "✓"}</div>
-                        <span className="text-xs text-slate-400">해당없음</span>
-                      </label>
-                    </div>
-                    <input type="date" value={r.inspectionNA ? "" : r.inspectionExpiry} disabled={r.inspectionNA} onChange={(e) => updateRow(r.id, "inspectionExpiry", e.target.value)} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300" />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="ptw-label mb-0">가입보험기간</label>
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <div
-                          className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center text-white"
-                          style={{ background: r.insuranceNA ? PRIMARY : "white", borderColor: r.insuranceNA ? PRIMARY : "#cbd5e1", fontSize: "0.55rem" }}
-                          onClick={() => updateRow(r.id, "insuranceNA", !r.insuranceNA)}
-                        >{r.insuranceNA && "✓"}</div>
-                        <span className="text-xs text-slate-400">해당없음</span>
-                      </label>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <input type="date" value={r.insuranceNA ? "" : r.insuranceStart} disabled={r.insuranceNA} onChange={(e) => updateRow(r.id, "insuranceStart", e.target.value)} className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300" />
-                      <span className="text-xs text-slate-400">~</span>
-                      <input type="date" value={r.insuranceNA ? "" : r.insuranceEnd} disabled={r.insuranceNA} onChange={(e) => updateRow(r.id, "insuranceEnd", e.target.value)} className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 상세규격/추가부품 설치 */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-semibold text-slate-500">상세규격 / 추가 설치부품</span>
-                    <button onClick={() => addPart(r.id)} className="text-xs text-slate-400 hover:text-teal-500">+ 부품 추가</button>
-                  </div>
-                  {(r.additionalParts ?? []).length > 0 ? (
-                    <div className="rounded-lg border border-slate-200 overflow-hidden">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr style={{ background: PRIMARY_LIGHT }}>
-                            {["설치부품 명칭", "재료/규격", "정격하중", "방법", ""].map((h) => (
-                              <th key={h} className="px-2 py-1.5 text-left font-medium text-slate-600 whitespace-nowrap">{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(r.additionalParts ?? []).map((p) => (
-                            <tr key={p.id} className="border-t border-slate-100">
-                              <td className="px-2 py-1"><input type="text" value={p.partName} onChange={(e) => updatePart(r.id, p.id, "partName", e.target.value)} className="w-full min-w-20 px-2 py-1 border border-slate-200 rounded text-xs outline-none focus:border-teal-400" placeholder="예: 오거드릴" /></td>
-                              <td className="px-2 py-1"><input type="text" value={p.material} onChange={(e) => updatePart(r.id, p.id, "material", e.target.value)} className="w-full min-w-20 px-2 py-1 border border-slate-200 rounded text-xs outline-none focus:border-teal-400" placeholder="예: φ600mm" /></td>
-                              <td className="px-2 py-1"><input type="text" value={p.ratedLoad} onChange={(e) => updatePart(r.id, p.id, "ratedLoad", e.target.value)} className="w-24 px-2 py-1 border border-slate-200 rounded text-xs outline-none focus:border-teal-400" placeholder="예: 5t" /></td>
-                              <td className="px-2 py-1"><input type="text" value={p.method} onChange={(e) => updatePart(r.id, p.id, "method", e.target.value)} className="w-full min-w-16 px-2 py-1 border border-slate-200 rounded text-xs outline-none focus:border-teal-400" placeholder="설치 방법" /></td>
-                              <td className="px-2 py-1"><button onClick={() => removePart(r.id, p.id)} className="text-slate-300 hover:text-red-400 px-1">✕</button></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-300 py-1">+ 부품 추가를 눌러 설치부품을 입력하세요</p>
-                  )}
-                </div>
-              </div>
-            )}
+            <div className="px-3 py-2 border-t border-slate-100">
+              <button onClick={() => addRow()} className="text-xs text-slate-400 hover:text-teal-500">+ 행 추가</button>
+            </div>
           </div>
-        ))}
-
-        <button
-          onClick={() => addRow()}
-          className="text-xs text-slate-400 hover:text-teal-500"
-        >
-          + 직접 입력
-        </button>
+        )}
       </div>
     );
   };
@@ -2401,59 +2759,173 @@ function DrawingForm() {
   return <FileUploader />;
 }
 
-// ─── 기타 첨부파일 (리스트만, 미리보기 없음) ──────────────────────
+// ─── 기타 첨부파일 ────────────────────────────────────────────────
+const EQUIPMENT_DOC_TYPES = [
+  "건설기계 등록·검사증",
+  "운전원 자격·면허 사본",
+  "제조·임대사 사용설명서",
+  "기계 대여사항 기록부",
+  "건설기계 수리·보수·점검이력",
+  "보험등록증",
+  "기타 (제원표, 사전검토사항 등)",
+] as const;
+
 interface OtherFile { id: string; name: string; type: string }
-interface OtherFilesData { files?: OtherFile[] }
+interface EquipmentFile { id: string; name: string; mimeType: string; docCategory: string }
+interface OtherFilesData { files?: OtherFile[]; equipmentFiles?: Record<string, EquipmentFile[]> }
 
 function OtherFilesForm() {
-  const { formData, updateFormData } = useWorkPlanStore();
+  const { formData, updateFormData, selectedEquipments } = useWorkPlanStore();
   const data = (formData["other_files"] as OtherFilesData) ?? {};
   const files: OtherFile[] = data.files ?? [];
+  const equipmentFiles: Record<string, EquipmentFile[]> = data.equipmentFiles ?? {};
   const inputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files ?? []);
-    const newFiles: OtherFile[] = selected.map((f) => ({
-      id: `of_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      name: f.name,
-      type: f.type,
-    }));
-    updateFormData("other_files", { files: [...files, ...newFiles] });
-    if (inputRef.current) inputRef.current.value = "";
-  };
-
-  const remove = (id: string) =>
-    updateFormData("other_files", { files: files.filter((f) => f.id !== id) });
+  const eqInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
+  const [eqAttachEnabled, setEqAttachEnabled] = React.useState(false);
+  const [expandedEq, setExpandedEq] = React.useState<Set<string>>(new Set());
 
   const fileIcon = (type: string) => type.includes("pdf") ? "📄" : type.startsWith("image/") ? "🖼️" : "📎";
+  const newId = () => `f_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+  // 일반 첨부
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFiles: OtherFile[] = Array.from(e.target.files ?? []).map((f) => ({ id: newId(), name: f.name, type: f.type }));
+    updateFormData("other_files", { ...data, files: [...files, ...newFiles] });
+    if (inputRef.current) inputRef.current.value = "";
+  };
+  const removeGeneral = (id: string) =>
+    updateFormData("other_files", { ...data, files: files.filter((f) => f.id !== id) });
+
+  // 장비별 첨부
+  const handleEqFileChange = (eqType: string, docCategory: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEqFiles: EquipmentFile[] = Array.from(e.target.files ?? []).map((f) => ({
+      id: newId(), name: f.name, mimeType: f.type, docCategory,
+    }));
+    const existing = equipmentFiles[eqType] ?? [];
+    updateFormData("other_files", { ...data, equipmentFiles: { ...equipmentFiles, [eqType]: [...existing, ...newEqFiles] } });
+    const el = eqInputRefs.current[`${eqType}__${docCategory}`];
+    if (el) el.value = "";
+  };
+  const removeEqFile = (eqType: string, fileId: string) => {
+    const next = (equipmentFiles[eqType] ?? []).filter((f) => f.id !== fileId);
+    updateFormData("other_files", { ...data, equipmentFiles: { ...equipmentFiles, [eqType]: next } });
+  };
+
+  const toggleExpand = (eqType: string) =>
+    setExpandedEq((prev) => { const s = new Set(prev); s.has(eqType) ? s.delete(eqType) : s.add(eqType); return s; });
 
   return (
-    <div className="space-y-3">
-      <div
-        className="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors hover:border-teal-400"
-        style={{ borderColor: "#b2ece9", background: PRIMARY_LIGHT }}
-        onClick={() => inputRef.current?.click()}
-      >
-        <p className="text-sm text-slate-500">클릭하여 파일 업로드</p>
-        <p className="text-xs text-slate-400 mt-0.5">이미지, PDF 파일 지원</p>
-        <input ref={inputRef} type="file" multiple accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
-      </div>
-      {files.length > 0 && (
-        <div className="rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-3 py-2 text-xs font-semibold text-slate-500 border-b border-slate-100" style={{ background: "#f8fafc" }}>
-            첨부파일 목록 ({files.length}건)
+    <div className="space-y-4">
+      {/* 장비별 서류 첨부 */}
+      {selectedEquipments.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">장비별 서류 첨부 <span className="normal-case font-normal text-slate-400">(선택)</span></p>
+            <button
+              type="button"
+              onClick={() => setEqAttachEnabled((v) => !v)}
+              className="relative inline-flex items-center w-10 h-5 rounded-full transition-colors flex-shrink-0"
+              style={{ background: eqAttachEnabled ? PRIMARY : "#cbd5e1" }}
+            >
+              <span
+                className="inline-block w-4 h-4 bg-white rounded-full shadow transition-transform"
+                style={{ transform: eqAttachEnabled ? "translateX(22px)" : "translateX(2px)" }}
+              />
+            </button>
           </div>
-          <div className="divide-y divide-slate-50">
-            {files.map((f) => (
-              <div key={f.id} className="flex items-center gap-3 px-3 py-2">
-                <span className="text-base flex-shrink-0">{fileIcon(f.type)}</span>
-                <span className="flex-1 min-w-0 text-xs text-slate-700 truncate">{f.name}</span>
-                <button onClick={() => remove(f.id)} className="text-slate-300 hover:text-red-400 text-xs px-1 flex-shrink-0">✕</button>
+          {eqAttachEnabled && (selectedEquipments as EquipmentType[]).map((eqType) => {
+            const eq = CONSTRUCTION_EQUIPMENT_TYPES[eqType];
+            const eqFiles = equipmentFiles[eqType] ?? [];
+            const isExpanded = expandedEq.has(eqType);
+            return (
+              <div key={eqType} className="rounded-xl border border-slate-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(eqType)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
+                >
+                  <span className="text-sm font-medium text-slate-700">{eq.icon} {eq.label}</span>
+                  <div className="flex items-center gap-2">
+                    {eqFiles.length > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: PRIMARY_LIGHT, color: PRIMARY }}>
+                        {eqFiles.length}건
+                      </span>
+                    )}
+                    <span className="text-slate-400 text-xs">{isExpanded ? "▲" : "▼"}</span>
+                  </div>
+                </button>
+                {isExpanded && (
+                  <div className="border-t border-slate-100 divide-y divide-slate-50">
+                    {EQUIPMENT_DOC_TYPES.map((docType) => {
+                      const docFiles = eqFiles.filter((f) => f.docCategory === docType);
+                      const refKey = `${eqType}__${docType}`;
+                      return (
+                        <div key={docType} className="px-4 py-2.5 flex items-start gap-3">
+                          <span className="text-xs text-slate-500 w-44 flex-shrink-0 pt-0.5">{docType}</span>
+                          <div className="flex flex-wrap items-center gap-1.5 flex-1">
+                            {docFiles.map((f) => (
+                              <div key={f.id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-slate-200 bg-slate-50">
+                                <span>{fileIcon(f.mimeType)}</span>
+                                <span className="text-slate-700 max-w-[8rem] truncate">{f.name}</span>
+                                <button type="button" onClick={() => removeEqFile(eqType, f.id)} className="text-slate-300 hover:text-red-400 ml-0.5">✕</button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => eqInputRefs.current[refKey]?.click()}
+                              className="text-xs px-2.5 py-1 rounded-full border border-dashed transition-colors hover:border-teal-400 hover:text-teal-600 text-slate-400"
+                              style={{ borderColor: "#cbd5e1" }}
+                            >
+                              + 첨부
+                            </button>
+                            <input
+                              ref={(el) => { eqInputRefs.current[refKey] = el; }}
+                              type="file" multiple accept="image/*,.pdf" className="hidden"
+                              onChange={(e) => handleEqFileChange(eqType, docType, e)}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
+
+      {/* 일반 첨부파일 */}
+      <div className="space-y-2">
+        {selectedEquipments.length > 0 && (
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">일반 첨부파일 <span className="normal-case font-normal text-slate-400">(선택)</span></p>
+        )}
+        <div
+          className="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors hover:border-teal-400"
+          style={{ borderColor: "#b2ece9", background: PRIMARY_LIGHT }}
+          onClick={() => inputRef.current?.click()}
+        >
+          <p className="text-sm text-slate-500">클릭하여 파일 업로드</p>
+          <p className="text-xs text-slate-400 mt-0.5">이미지, PDF 파일 지원</p>
+          <input ref={inputRef} type="file" multiple accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
+        </div>
+        {files.length > 0 && (
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-3 py-2 text-xs font-semibold text-slate-500 border-b border-slate-100" style={{ background: "#f8fafc" }}>
+              첨부파일 목록 ({files.length}건)
+            </div>
+            <div className="divide-y divide-slate-50">
+              {files.map((f) => (
+                <div key={f.id} className="flex items-center gap-3 px-3 py-2">
+                  <span className="text-base flex-shrink-0">{fileIcon(f.type)}</span>
+                  <span className="flex-1 min-w-0 text-xs text-slate-700 truncate">{f.name}</span>
+                  <button onClick={() => removeGeneral(f.id)} className="text-slate-300 hover:text-red-400 text-xs px-1 flex-shrink-0">✕</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -2687,6 +3159,601 @@ function DemolitionPlanForm() {
   );
 }
 
+// ─── 신규 장비별 점검표 / 작업계획 폼 ───────────────────────────
+
+// 트럭 사전 점검표
+function TruckChecklistForm() {
+  const [d, u] = useSection<Record<string, boolean | string>>("truck_checklist", {});
+  const checks = [
+    "브레이크 / 클러치 / 유압장치 이상 없음",
+    "적재함 고정철물 / 로프 / 사다리 이상 없음",
+    "좌석 안전띠 착용 가능 상태",
+    "후사경 / 후방영상표시장치 정상",
+    "전조등 / 후미등 / 후진경보기 정상",
+    "안전블록 / 지주 / 쐐기 비치 확인",
+    "급강하 방지장치(유압밸브) 이상 없음",
+  ];
+  return (
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "2rem" }} />
+          <col style={{ width: "44%" }} />
+          <col />
+        </colgroup>
+        <thead>
+          <tr style={{ background: PRIMARY_LIGHT }}>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs"></th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">점검 항목</th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">확인 내용 및 조치</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checks.map((c) => (
+            <tr key={c} className="border-t border-slate-100">
+              <td className="px-3 py-2 text-center">
+                <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                  style={{ background: (d[c] as boolean) ? PRIMARY : "white", borderColor: (d[c] as boolean) ? PRIMARY : "#cbd5e1" }}
+                  onClick={() => u(c, !(d[c] as boolean))}
+                >{(d[c] as boolean) && "✓"}</div>
+              </td>
+              <td className="px-3 py-2 text-xs font-medium whitespace-nowrap" style={{ color: (d[c] as boolean) ? PRIMARY : "#64748b" }}>{c}</td>
+              <td className="px-2 py-1.5">
+                <input type="text" value={(d[`${c}_note`] as string) ?? ""}
+                  onChange={(e) => u(`${c}_note`, e.target.value)}
+                  disabled={!(d[c] as boolean)}
+                  className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                  placeholder={!(d[c] as boolean) ? "—" : "확인 내용 및 조치 입력"} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// 굴착기 사전 점검표
+function ExcavatorChecklistForm() {
+  const [d, u] = useSection<Record<string, boolean | string>>("excavator_checklist", {});
+  const checks = [
+    "브레이크 / 클러치 / 선회장치 이상 없음",
+    "붐·암 작동 이상 없음",
+    "훅 해지장치 이상 없음",
+    "작업장치 이탈방지 안전핀 체결",
+    "후사경 / 후미등 / 후진경보기 정상",
+    "후방영상장치 정상",
+    "좌석 안전띠 착용 가능 상태",
+  ];
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "2rem" }} />
+            <col style={{ width: "44%" }} />
+            <col />
+          </colgroup>
+          <thead>
+            <tr style={{ background: PRIMARY_LIGHT }}>
+              <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs"></th>
+              <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">점검 항목</th>
+              <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">확인 내용 및 조치</th>
+            </tr>
+          </thead>
+          <tbody>
+            {checks.map((c) => (
+              <tr key={c} className="border-t border-slate-100">
+                <td className="px-3 py-2 text-center">
+                  <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                    style={{ background: (d[c] as boolean) ? PRIMARY : "white", borderColor: (d[c] as boolean) ? PRIMARY : "#cbd5e1" }}
+                    onClick={() => u(c, !(d[c] as boolean))}
+                  >{(d[c] as boolean) && "✓"}</div>
+                </td>
+                <td className="px-3 py-2 text-xs font-medium" style={{ color: (d[c] as boolean) ? PRIMARY : "#64748b" }}>{c}</td>
+                <td className="px-2 py-1.5">
+                  <input type="text" value={(d[`${c}_note`] as string) ?? ""}
+                    onChange={(e) => u(`${c}_note`, e.target.value)}
+                    disabled={!(d[c] as boolean)}
+                    className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                    placeholder={!(d[c] as boolean) ? "—" : "확인 내용 및 조치 입력"} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// 고소작업대 작업 계획
+function AerialLiftWorkPlanForm() {
+  const [d, u] = useSection<Record<string, string>>("aerial_lift_work_plan", {});
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-4 gap-3">
+        <TextField label="최대 작업높이 (m)" value={d.maxHeight ?? ""} onChange={(v) => u("maxHeight", v)} placeholder="예: 12.0" type="number" />
+        <TextField label="최대 작업반경 (m)" value={d.maxRadius ?? ""} onChange={(v) => u("maxRadius", v)} placeholder="예: 8.0" type="number" />
+        <TextField label="정격하중 (kg)" value={d.ratedLoad ?? ""} onChange={(v) => u("ratedLoad", v)} placeholder="예: 230" type="number" />
+        <TextField label="최대허용풍속 (m/s)" value={d.maxWindSpeed ?? ""} onChange={(v) => u("maxWindSpeed", v)} placeholder="예: 10" type="number" />
+      </div>
+      <div className="grid grid-cols-4 gap-3 items-end">
+        <TextField label="아웃트리거 최대폭 앞 (m)" value={d.outriggerFront ?? ""} onChange={(v) => u("outriggerFront", v)} placeholder="예: 3.5" />
+        <TextField label="아웃트리거 최대폭 뒤 (m)" value={d.outriggerRear ?? ""} onChange={(v) => u("outriggerRear", v)} placeholder="예: 3.5" />
+        <div className="col-span-2">
+          <TextField label="작업 구역 및 특이사항" value={d.note ?? ""} onChange={(v) => u("note", v)} placeholder="작업 위치, 경사면 여부, 인접 구조물 등" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 고소작업대 사전 점검표
+function AerialLiftChecklistForm() {
+  const [d, u] = useSection<Record<string, boolean | string>>("aerial_lift_checklist", {});
+  const checks = [
+    "붐(와이어로프·체인 구동부) 이상 없음",
+    "선회부 이상 없음",
+    "붐 인출길이 표시장치 정상",
+    "모멘트 감지장치(위치제어) 정상",
+    "아웃트리거 전도방지 기능 정상",
+    "과부하 방지장치 정상",
+    "낙하방지 밸브 / 유압 이상 없음",
+    "탑승함 고정 및 안전대 부착 고리 이상 없음",
+  ];
+  const YesNo = ({ field }: { field: string }) => (
+    <div className="flex gap-1.5 flex-shrink-0">
+      {(["유", "무"] as const).map((opt) => (
+        <button key={opt} type="button"
+          onClick={() => u(field, d[field] === opt ? "" : opt)}
+          className="text-xs px-2.5 py-1 rounded-full border transition-all"
+          style={{ background: d[field] === opt ? PRIMARY : "white", borderColor: d[field] === opt ? PRIMARY : "#e2e8f0", color: d[field] === opt ? "white" : "#64748b" }}>
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <div className="space-y-3">
+      {/* 작업대 유/무 */}
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-slate-200">
+        <span className="text-xs font-medium text-slate-600 w-24 flex-shrink-0">작업대</span>
+        <YesNo field="workPlatform" />
+        {d.workPlatform === "유" && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa" }}>
+            ⚠️ 고소작업대를 중량물 인양용으로 사용하지 말 것
+          </div>
+        )}
+      </div>
+      {/* 사용설명서 유/무 */}
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200">
+        <span className="text-xs font-medium text-slate-600 w-24 flex-shrink-0">사용설명서</span>
+        <YesNo field="manual" />
+        <input type="text" value={(d.manualNote as string) ?? ""} onChange={(e) => u("manualNote", e.target.value)}
+          placeholder="특이사항"
+          className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400" />
+      </div>
+      {/* 체크리스트 */}
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "2rem" }} />
+            <col style={{ width: "44%" }} />
+            <col />
+          </colgroup>
+          <thead>
+            <tr style={{ background: PRIMARY_LIGHT }}>
+              <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs"></th>
+              <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">점검 항목</th>
+              <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">확인 내용 및 조치</th>
+            </tr>
+          </thead>
+          <tbody>
+            {checks.map((c) => (
+              <tr key={c} className="border-t border-slate-100">
+                <td className="px-3 py-2 text-center">
+                  <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                    style={{ background: (d[c] as boolean) ? PRIMARY : "white", borderColor: (d[c] as boolean) ? PRIMARY : "#cbd5e1" }}
+                    onClick={() => u(c, !(d[c] as boolean))}
+                  >{(d[c] as boolean) && "✓"}</div>
+                </td>
+                <td className="px-3 py-2 text-xs font-medium" style={{ color: (d[c] as boolean) ? PRIMARY : "#64748b" }}>{c}</td>
+                <td className="px-2 py-1.5">
+                  <input type="text" value={(d[`${c}_note`] as string) ?? ""}
+                    onChange={(e) => u(`${c}_note`, e.target.value)}
+                    disabled={!(d[c] as boolean)}
+                    className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                    placeholder={!(d[c] as boolean) ? "—" : "확인 내용 및 조치 입력"} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// 크레인 사전 점검표
+function CraneChecklistForm() {
+  const [d, u] = useSection<Record<string, boolean | string>>("crane_checklist", {});
+  const checks = [
+    "권과방지장치 정상",
+    "과부하방지장치 정상",
+    "훅 해지장치 정상",
+    "아웃트리거 / 하부 철판 설치 확인",
+    "브레이크 / 클러치 이상 없음",
+    "붐 / 선회 작동 이상 없음",
+    "달기기구(슬링·샤클) 점검 확인",
+    "신호수 배치 및 신호 방법 확인",
+  ];
+  return (
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "2rem" }} />
+          <col style={{ width: "44%" }} />
+          <col />
+        </colgroup>
+        <thead>
+          <tr style={{ background: PRIMARY_LIGHT }}>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs"></th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">점검 항목</th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">확인 내용 및 조치</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checks.map((c) => (
+            <tr key={c} className="border-t border-slate-100">
+              <td className="px-3 py-2 text-center">
+                <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                  style={{ background: (d[c] as boolean) ? PRIMARY : "white", borderColor: (d[c] as boolean) ? PRIMARY : "#cbd5e1" }}
+                  onClick={() => u(c, !(d[c] as boolean))}
+                >{(d[c] as boolean) && "✓"}</div>
+              </td>
+              <td className="px-3 py-2 text-xs font-medium whitespace-nowrap" style={{ color: (d[c] as boolean) ? PRIMARY : "#64748b" }}>{c}</td>
+              <td className="px-2 py-1.5">
+                <input type="text" value={(d[`${c}_note`] as string) ?? ""}
+                  onChange={(e) => u(`${c}_note`, e.target.value)}
+                  disabled={!(d[c] as boolean)}
+                  className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                  placeholder={!(d[c] as boolean) ? "—" : "확인 내용 및 조치 입력"} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// 콘크리트펌프카 작업 계획
+function ConcretePumpWorkPlanForm() {
+  const [d, u] = useSection<Record<string, string>>("concrete_pump_work_plan", {});
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-4 gap-3">
+        <TextField label="최대수송거리 수평 (m)" value={d.maxHorizontal ?? ""} onChange={(v) => u("maxHorizontal", v)} placeholder="예: 500" type="number" />
+        <TextField label="최대수송거리 수직 (m)" value={d.maxVertical ?? ""} onChange={(v) => u("maxVertical", v)} placeholder="예: 100" type="number" />
+        <TextField label="토출량 (㎥/hr)" value={d.outputRate ?? ""} onChange={(v) => u("outputRate", v)} placeholder="예: 90" type="number" />
+        <TextField label="붐 수송관 지름 (mm)" value={d.pipeDiameter ?? ""} onChange={(v) => u("pipeDiameter", v)} placeholder="예: 125" type="number" />
+      </div>
+      <div className="grid grid-cols-4 gap-3 items-end">
+        <TextField label="아웃트리거 최대폭 앞 (m)" value={d.outriggerFront ?? ""} onChange={(v) => u("outriggerFront", v)} placeholder="예: 7.9" />
+        <TextField label="아웃트리거 최대폭 뒤 (m)" value={d.outriggerRear ?? ""} onChange={(v) => u("outriggerRear", v)} placeholder="예: 7.9" />
+        <div className="col-span-2">
+          <TextField label="타설 계획 및 특이사항" value={d.note ?? ""} onChange={(v) => u("note", v)} placeholder="타설 위치, 압송 경로, 배관 설치 계획 등" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 콘크리트펌프카 사전 점검표
+function ConcretePumpChecklistForm() {
+  const [d, u] = useSection<Record<string, boolean | string>>("concrete_pump_checklist", {});
+  const checks = [
+    "붐 / 배관 / 호스 가이드 이상 없음",
+    "호퍼 / 펌프 이상 없음",
+    "아웃트리거 전도방지 기능 정상",
+    "비상정지 장치 정상",
+    "브레이크 / 클러치 이상 없음",
+    "붐 / 선회부 이상 없음",
+    "좌석 안전띠 착용 가능 상태",
+    "후사경 / 후미등 / 후진경보기 정상",
+  ];
+  return (
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "2rem" }} />
+          <col style={{ width: "44%" }} />
+          <col />
+        </colgroup>
+        <thead>
+          <tr style={{ background: PRIMARY_LIGHT }}>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs"></th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">점검 항목</th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">확인 내용 및 조치</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checks.map((c) => (
+            <tr key={c} className="border-t border-slate-100">
+              <td className="px-3 py-2 text-center">
+                <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                  style={{ background: (d[c] as boolean) ? PRIMARY : "white", borderColor: (d[c] as boolean) ? PRIMARY : "#cbd5e1" }}
+                  onClick={() => u(c, !(d[c] as boolean))}
+                >{(d[c] as boolean) && "✓"}</div>
+              </td>
+              <td className="px-3 py-2 text-xs font-medium whitespace-nowrap" style={{ color: (d[c] as boolean) ? PRIMARY : "#64748b" }}>{c}</td>
+              <td className="px-2 py-1.5">
+                <input type="text" value={(d[`${c}_note`] as string) ?? ""}
+                  onChange={(e) => u(`${c}_note`, e.target.value)}
+                  disabled={!(d[c] as boolean)}
+                  className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                  placeholder={!(d[c] as boolean) ? "—" : "확인 내용 및 조치 입력"} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// 항타기 사전 점검표
+function PileChecklistForm() {
+  const [d, u] = useSection<Record<string, boolean | string>>("pile_checklist", {});
+  const checks = [
+    "항타기 해머 / 항발기 / 오거 이상 없음",
+    "와이어로프 이상 없음",
+    "브레이크 / 백스테이 이상 없음",
+    "붐 / 윈치 / 리더 이상 없음",
+    "리더 경사각도계 정상",
+    "역회전 방지 브레이크 정상",
+    "쐐기 / 인발하중계 비치 확인",
+    "후사경 / 후방영상장치 정상",
+  ];
+  return (
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "2rem" }} />
+          <col style={{ width: "44%" }} />
+          <col />
+        </colgroup>
+        <thead>
+          <tr style={{ background: PRIMARY_LIGHT }}>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs"></th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">점검 항목</th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">확인 내용 및 조치</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checks.map((c) => (
+            <tr key={c} className="border-t border-slate-100">
+              <td className="px-3 py-2 text-center">
+                <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                  style={{ background: (d[c] as boolean) ? PRIMARY : "white", borderColor: (d[c] as boolean) ? PRIMARY : "#cbd5e1" }}
+                  onClick={() => u(c, !(d[c] as boolean))}
+                >{(d[c] as boolean) && "✓"}</div>
+              </td>
+              <td className="px-3 py-2 text-xs font-medium whitespace-nowrap" style={{ color: (d[c] as boolean) ? PRIMARY : "#64748b" }}>{c}</td>
+              <td className="px-2 py-1.5">
+                <input type="text" value={(d[`${c}_note`] as string) ?? ""}
+                  onChange={(e) => u(`${c}_note`, e.target.value)}
+                  disabled={!(d[c] as boolean)}
+                  className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                  placeholder={!(d[c] as boolean) ? "—" : "확인 내용 및 조치 입력"} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// 지게차 작업 계획
+function ForkliftWorkPlanForm() {
+  const [d, u] = useSection<Record<string, string>>("forklift_work_plan", {});
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-4 gap-3">
+        <TextField label="적재능력 규격 (kg)" value={d.capacity ?? ""} onChange={(v) => u("capacity", v)} placeholder="예: 3000" type="number" />
+        <TextField label="동력형식" value={d.powerType ?? ""} onChange={(v) => u("powerType", v)} placeholder="디젤 / LPG / 전동" />
+        <TextField label="최고속도 (km/h)" value={d.maxSpeed ?? ""} onChange={(v) => u("maxSpeed", v)} placeholder="예: 20" type="number" />
+        <TextField label="마스트 최대높이 (m)" value={d.mastMaxHeight ?? ""} onChange={(v) => u("mastMaxHeight", v)} placeholder="예: 3.0" type="number" />
+      </div>
+      <div className="grid grid-cols-4 gap-3 items-end">
+        <TextField label="마스트 경사각 전경 (°)" value={d.tiltFront ?? ""} onChange={(v) => u("tiltFront", v)} placeholder="예: 6" type="number" />
+        <TextField label="마스트 경사각 후경 (°)" value={d.tiltRear ?? ""} onChange={(v) => u("tiltRear", v)} placeholder="예: 12" type="number" />
+        <div className="col-span-2">
+          <TextField label="작업 구역 및 특이사항" value={d.note ?? ""} onChange={(v) => u("note", v)} placeholder="통로 폭, 바닥 상태, 적재물 특성 등" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 지게차 사전 점검표
+function ForkliftChecklistForm() {
+  const [d, u] = useSection<Record<string, boolean | string>>("forklift_checklist", {});
+  const checks = [
+    "포크 / 마스트 / 틸트 실린더 이상 없음",
+    "카운터웨이트 이상 없음",
+    "조향 / 브레이크 / 전·후륜 이상 없음",
+    "전조등 / 후미등 정상",
+    "낙하물 보호구조(헤드가드) 이상 없음",
+    "백레스트 이상 없음",
+    "후방감지기 / 후진경보 / 경광등 정상",
+    "후사경 / 후방영상 정상",
+    "좌석 안전띠 착용 가능 상태",
+  ];
+  return (
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "2rem" }} />
+          <col style={{ width: "44%" }} />
+          <col />
+        </colgroup>
+        <thead>
+          <tr style={{ background: PRIMARY_LIGHT }}>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs"></th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">점검 항목</th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">확인 내용 및 조치</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checks.map((c) => (
+            <tr key={c} className="border-t border-slate-100">
+              <td className="px-3 py-2 text-center">
+                <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                  style={{ background: (d[c] as boolean) ? PRIMARY : "white", borderColor: (d[c] as boolean) ? PRIMARY : "#cbd5e1" }}
+                  onClick={() => u(c, !(d[c] as boolean))}
+                >{(d[c] as boolean) && "✓"}</div>
+              </td>
+              <td className="px-3 py-2 text-xs font-medium whitespace-nowrap" style={{ color: (d[c] as boolean) ? PRIMARY : "#64748b" }}>{c}</td>
+              <td className="px-2 py-1.5">
+                <input type="text" value={(d[`${c}_note`] as string) ?? ""}
+                  onChange={(e) => u(`${c}_note`, e.target.value)}
+                  disabled={!(d[c] as boolean)}
+                  className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                  placeholder={!(d[c] as boolean) ? "—" : "확인 내용 및 조치 입력"} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// 로더 사전 점검표
+function LoaderChecklistForm() {
+  const [d, u] = useSection<Record<string, boolean | string>>("loader_checklist", {});
+  const checks = [
+    "버킷 / 포크 / 블레이드 / 클램프 이상 없음",
+    "브레이크 / 클러치 이상 없음",
+    "암(붐) / 조향 / 주행 이상 없음",
+    "암(붐) 전도방지 이상 없음",
+    "낙하물 보호구조 이상 없음",
+    "전조등 / 후미등 정상",
+    "후사경 / 후방영상 정상",
+    "후진경보 정상",
+    "좌석 안전띠 착용 가능 상태",
+  ];
+  return (
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "2rem" }} />
+          <col style={{ width: "44%" }} />
+          <col />
+        </colgroup>
+        <thead>
+          <tr style={{ background: PRIMARY_LIGHT }}>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs"></th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">점검 항목</th>
+            <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">확인 내용 및 조치</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checks.map((c) => (
+            <tr key={c} className="border-t border-slate-100">
+              <td className="px-3 py-2 text-center">
+                <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                  style={{ background: (d[c] as boolean) ? PRIMARY : "white", borderColor: (d[c] as boolean) ? PRIMARY : "#cbd5e1" }}
+                  onClick={() => u(c, !(d[c] as boolean))}
+                >{(d[c] as boolean) && "✓"}</div>
+              </td>
+              <td className="px-3 py-2 text-xs font-medium whitespace-nowrap" style={{ color: (d[c] as boolean) ? PRIMARY : "#64748b" }}>{c}</td>
+              <td className="px-2 py-1.5">
+                <input type="text" value={(d[`${c}_note`] as string) ?? ""}
+                  onChange={(e) => u(`${c}_note`, e.target.value)}
+                  disabled={!(d[c] as boolean)}
+                  className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                  placeholder={!(d[c] as boolean) ? "—" : "확인 내용 및 조치 입력"} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// 롤러 사전 점검표
+function RollerChecklistForm() {
+  const [d, u] = useSection<Record<string, boolean | string | string>>("roller_checklist", {});
+  const checks = [
+    "타이어 / 드럼 및 밸러스트 이상 없음",
+    "롤 스크레이퍼 / 살수장치 이상 없음",
+    "브레이크 / 클러치 / 진동장치 이상 없음",
+    "낙하물 보호구조 이상 없음",
+    "전조등 / 후미등 정상",
+    "후사경 / 후진경보 정상",
+    "후방영상 정상",
+    "좌석 안전띠 착용 가능 상태",
+  ];
+  const rollerTypes = ["타이어식", "진동식", "탠덤식", "기타"];
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="ptw-label">롤러 종류</label>
+        <div className="flex flex-wrap gap-2">
+          {rollerTypes.map((t) => (
+            <button key={t} onClick={() => u("rollerType", t)}
+              className="text-xs px-3 py-1.5 rounded-full border transition-all"
+              style={{ background: d.rollerType === t ? PRIMARY : "white", borderColor: d.rollerType === t ? PRIMARY : "#e2e8f0", color: d.rollerType === t ? "white" : "#64748b" }}
+            >{t}</button>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "2rem" }} />
+            <col style={{ width: "44%" }} />
+            <col />
+          </colgroup>
+          <thead>
+            <tr style={{ background: PRIMARY_LIGHT }}>
+              <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs"></th>
+              <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">점검 항목</th>
+              <th className="px-3 py-2 text-left font-medium text-slate-600 text-xs">확인 내용 및 조치</th>
+            </tr>
+          </thead>
+          <tbody>
+            {checks.map((c) => (
+              <tr key={c} className="border-t border-slate-100">
+                <td className="px-3 py-2 text-center">
+                  <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white text-xs cursor-pointer mx-auto"
+                    style={{ background: (d[c] as boolean) ? PRIMARY : "white", borderColor: (d[c] as boolean) ? PRIMARY : "#cbd5e1" }}
+                    onClick={() => u(c, !(d[c] as boolean))}
+                  >{(d[c] as boolean) && "✓"}</div>
+                </td>
+                <td className="px-3 py-2 text-xs font-medium" style={{ color: (d[c] as boolean) ? PRIMARY : "#64748b" }}>{c}</td>
+                <td className="px-2 py-1.5">
+                  <input type="text" value={(d[`${c}_note`] as string) ?? ""}
+                    onChange={(e) => u(`${c}_note`, e.target.value)}
+                    disabled={!(d[c] as boolean)}
+                    className="w-full px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300"
+                    placeholder={!(d[c] as boolean) ? "—" : "확인 내용 및 조치 입력"} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ─── 섹션 레지스트리 ─────────────────────────────────────────────
 const SECTION_COMPONENTS: Record<string, { title: string; Component: React.FC }> = {
   // 공통 섹션
@@ -2701,15 +3768,12 @@ const SECTION_COMPONENTS: Record<string, { title: string; Component: React.FC }>
   risk: { title: "위험성평가", Component: RiskForm },
   safety_checklist: { title: "안전점검", Component: SafetyChecklistForm },
   emergency_contact: { title: "비상연락망", Component: EmergencyContactForm },
-  work_description: { title: "작업 설명 (목적/세부내용/범위)", Component: WorkDescriptionForm },
+  work_description: { title: "작업 설명", Component: WorkDescriptionForm },
   work_environment: { title: "작업환경", Component: WorkEnvironmentForm },
-  operators: { title: "운전원·유도자·지휘자", Component: OperatorsForm },
   training: { title: "안전교육", Component: TrainingForm },
   disaster_prevention: { title: "재해예방 대책", Component: DisasterPreventionForm },
   legal_inspection: { title: "법정검사 기록", Component: LegalInspectionForm },
   signature: { title: "서명 및 결재", Component: SignatureForm },
-  drawing: { title: "도면", Component: DrawingForm },
-  other_files: { title: "기타 첨부파일", Component: OtherFilesForm },
   // 법정 의무 섹션 (별표4)
   pre_survey:        { title: "사전조사 기록 [법정]",    Component: PreSurveyForm },
   electrical_safety: { title: "전기안전작업계획 [법정]", Component: ElectricalSafetyForm },
@@ -2717,59 +3781,63 @@ const SECTION_COMPONENTS: Record<string, { title: string; Component: React.FC }>
   tunnel_plan:       { title: "터널굴착 계획 [법정]",    Component: TunnelPlanForm },
   chemical_ops:      { title: "화학설비 운전계획 [법정]",Component: ChemicalOpsForm },
   demolition_plan:   { title: "해체 계획 [법정]",        Component: DemolitionPlanForm },
+  drawing:           { title: "도면",                    Component: DrawingForm },
+  other_files:       { title: "기타 첨부파일",           Component: OtherFilesForm },
   // 약식 섹션
   simplified_risk: { title: "주요 위험요인", Component: SimplifiedRiskForm },
   simplified_safety: { title: "안전 조치 사항", Component: SimplifiedSafetyForm },
   // 트럭 (1번)
-  truck_route: { title: "운행 경로", Component: TruckRouteForm },
-  truck_load: { title: "최대 적재량 및 하중", Component: TruckLoadForm },
-  truck_road_condition: { title: "도로 상태 및 구배", Component: TruckRoadForm },
+  truck_spec:                { title: "트럭 전용 제원",      Component: TruckSpecForm },
+  truck_route:               { title: "운행 경로",           Component: TruckRouteForm },
+  truck_load:                { title: "최대 적재량 및 하중", Component: TruckLoadForm },
+  truck_road_condition:      { title: "도로 상태 및 구배",   Component: TruckRoadForm },
   truck_overturn_prevention: { title: "전복·낙하 방지 조치", Component: TruckOverturnForm },
-  // 불도저 (2번)
-  bulldozer_slope: { title: "작업 구역 경사도", Component: BulldozerSlopeForm },
-  bulldozer_buried: { title: "매설물 현황", Component: BulldozerBuriedForm },
-  bulldozer_obstacle: { title: "암석·지장물 현황", Component: BulldozerObstacleForm },
-  bulldozer_alarm: { title: "경보장치 설치 여부", Component: BulldozerAlarmForm },
-  // 모터그레이더 (3번)
-  grader_section: { title: "작업 구간 및 길이", Component: GraderSectionForm },
-  grader_road: { title: "노면 상태", Component: GraderRoadForm },
-  grader_speed: { title: "운행 속도 제한", Component: GraderSpeedForm },
-  // 로더 (4번)
-  loader_bucket: { title: "버킷 용량", Component: LoaderBucketForm },
-  loader_radius: { title: "작업 반경", Component: LoaderRadiusForm },
-  loader_method: { title: "적재 방법", Component: LoaderMethodForm },
-  // 스크레이퍼 (5번)
-  scraper_section: { title: "작업 길이 및 폭", Component: ScraperSectionForm },
-  scraper_depth: { title: "절취 깊이", Component: ScraperDepthForm },
-  // 크레인 (6번)
-  crane_capacity: { title: "최대 인양하중 및 반경", Component: CraneCapacityForm },
-  crane_rigging: { title: "달기기구 종류 및 수량", Component: CraneRiggingForm },
-  crane_swing: { title: "선회 반경 내 장애물", Component: CraneSwingForm },
-  crane_signal: { title: "신호 방법 및 신호수 배치", Component: CraneSignalForm },
-  crane_ground: { title: "하부지반 지지력 확인", Component: CraneGroundForm },
-  // 굴착기 (7번)
-  excavator_depth: { title: "굴착 깊이 및 기울기", Component: ExcavatorDepthForm },
-  excavator_ground: { title: "지반 상태 (토질조사 결과)", Component: ExcavatorGroundForm },
-  excavator_utility: { title: "매설물 확인 (가스/전기/통신)", Component: ExcavatorUtilityForm },
-  excavator_retaining: { title: "흙막이 공법", Component: ExcavatorRetainingForm },
-  // 항타·항발기 (8번)
-  pile_method: { title: "항타 공법", Component: PileMethodForm },
-  pile_type: { title: "파일 종류", Component: PileTypeForm },
-  pile_noise: { title: "소음·진동 관리", Component: PileNoiseForm },
+  truck_checklist:           { title: "사전 점검표",         Component: TruckChecklistForm },
+  // 굴착기 (2번)
+  excavator_depth:     { title: "굴착 깊이 및 기울기",           Component: ExcavatorDepthForm },
+  excavator_ground:    { title: "지반 상태 (토질조사 결과)",     Component: ExcavatorGroundForm },
+  excavator_utility:   { title: "매설물 확인 (가스/전기/통신)", Component: ExcavatorUtilityForm },
+  excavator_retaining: { title: "흙막이 공법",                   Component: ExcavatorRetainingForm },
+  excavator_checklist: { title: "작동상태 사전 점검표",           Component: ExcavatorChecklistForm },
+  // 고소작업대 (3번)
+  aerial_lift_work_plan:  { title: "작업 계획",   Component: AerialLiftWorkPlanForm },
+  aerial_lift_checklist:  { title: "사전 점검표", Component: AerialLiftChecklistForm },
+  // 크레인 (4번)
+  crane_capacity: { title: "최대 인양하중 및 반경",    Component: CraneCapacityForm },
+  crane_rigging:  { title: "달기기구 종류 및 수량",    Component: CraneRiggingForm },
+  crane_swing:    { title: "선회 반경 내 장애물",      Component: CraneSwingForm },
+  crane_signal:   { title: "신호 방법 및 신호수 배치", Component: CraneSignalForm },
+  crane_ground:   { title: "하부지반 지지력 확인",     Component: CraneGroundForm },
+  crane_checklist:{ title: "사전 점검표",              Component: CraneChecklistForm },
+  // 콘크리트펌프카 (5번)
+  concrete_pump_work_plan:  { title: "작업 계획",   Component: ConcretePumpWorkPlanForm },
+  concrete_pump_checklist:  { title: "사전 점검표", Component: ConcretePumpChecklistForm },
+  // 항타기 (6번)
+  pile_method:    { title: "항타 공법",       Component: PileMethodForm },
+  pile_type:      { title: "파일 종류",       Component: PileTypeForm },
+  pile_noise:     { title: "소음·진동 관리", Component: PileNoiseForm },
+  pile_checklist: { title: "사전 점검표",     Component: PileChecklistForm },
+  // 지게차 (7번)
+  forklift_work_plan:  { title: "작업 계획",   Component: ForkliftWorkPlanForm },
+  forklift_checklist:  { title: "사전 점검표", Component: ForkliftChecklistForm },
+  // 로더 (8번)
+  loader_bucket:    { title: "작업계획",    Component: LoaderBucketForm },
+  loader_checklist: { title: "사전 점검표", Component: LoaderChecklistForm },
   // 롤러 (9번)
-  roller_section: { title: "다짐 구간 및 면적", Component: RollerSectionForm },
-  roller_count: { title: "다짐 횟수 및 방법", Component: RollerCountForm },
-  roller_compaction: { title: "다짐도 관리", Component: RollerCompactionForm },
+  roller_section:    { title: "다짐 구간 및 면적", Component: RollerSectionForm },
+  roller_count:      { title: "다짐 횟수 및 방법", Component: RollerCountForm },
+  roller_compaction: { title: "다짐도 관리",       Component: RollerCompactionForm },
+  roller_checklist:  { title: "사전 점검표",       Component: RollerChecklistForm },
   // 기계 제원 (장비별)
-  truck_machine_spec:       { title: "기계 제원", Component: makeMachineSpecForm("truck_machine_spec") },
-  bulldozer_machine_spec:   { title: "기계 제원", Component: makeMachineSpecForm("bulldozer_machine_spec") },
-  grader_machine_spec:      { title: "기계 제원", Component: makeMachineSpecForm("grader_machine_spec") },
-  loader_machine_spec:      { title: "기계 제원", Component: makeMachineSpecForm("loader_machine_spec") },
-  scraper_machine_spec:     { title: "기계 제원", Component: makeMachineSpecForm("scraper_machine_spec") },
-  crane_machine_spec:       { title: "기계 제원", Component: makeMachineSpecForm("crane_machine_spec") },
-  excavator_machine_spec:   { title: "기계 제원", Component: makeMachineSpecForm("excavator_machine_spec") },
-  pile_driver_machine_spec: { title: "기계 제원", Component: makeMachineSpecForm("pile_driver_machine_spec") },
-  roller_machine_spec:      { title: "기계 제원", Component: makeMachineSpecForm("roller_machine_spec") },
+  truck_machine_spec:         { title: "기계 제원", Component: makeMachineSpecForm("truck_machine_spec") },
+  excavator_machine_spec:     { title: "기계 제원", Component: makeMachineSpecForm("excavator_machine_spec") },
+  aerial_lift_machine_spec:   { title: "기계 제원", Component: makeMachineSpecForm("aerial_lift_machine_spec") },
+  crane_machine_spec:         { title: "기계 제원", Component: makeMachineSpecForm("crane_machine_spec") },
+  concrete_pump_machine_spec: { title: "기계 제원", Component: makeMachineSpecForm("concrete_pump_machine_spec") },
+  pile_driver_machine_spec:   { title: "기계 제원", Component: makeMachineSpecForm("pile_driver_machine_spec") },
+  forklift_machine_spec:      { title: "기계 제원", Component: makeMachineSpecForm("forklift_machine_spec") },
+  loader_machine_spec:        { title: "기계 제원", Component: makeMachineSpecForm("loader_machine_spec") },
+  roller_machine_spec:        { title: "기계 제원", Component: makeMachineSpecForm("roller_machine_spec") },
 };
 
 // ─── 약식 개요 오버라이드 ─────────────────────────────────────────
@@ -2823,6 +3891,54 @@ function SectionFormEntry({ sectionId, label, animDelay }: { sectionId: string; 
   );
 }
 
+// ─── 작업 분류 프로필 배너 ────────────────────────────────────────
+function ClassificationBanner() {
+  const { classification } = useWorkPlanStore();
+  const cat = getCategoryById(classification.categoryId);
+  const sub = getSubcategoryById(classification.subcategoryId);
+  if (!sub) return null;
+  const subLabel = sub.isCustom ? (classification.customSubLabel || sub.label) : sub.label;
+  const waList = classification.workAttributeIds.map((id) => WORK_ATTRIBUTES.find((a) => a.id === id)).filter(Boolean);
+  const raList = classification.riskAttributeIds.map((id) => RISK_ATTRIBUTES.find((a) => a.id === id)).filter(Boolean);
+
+  const handleReclassify = () => {
+    window.dispatchEvent(new CustomEvent("ptw:openClassificationSelector"));
+  };
+
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: `${PRIMARY}25` }}>
+      <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap" style={{ background: `${PRIMARY}08` }}>
+        {cat && <span className="text-xs text-slate-500 flex-shrink-0">{cat.icon} {cat.label}</span>}
+        <span className="text-xs font-semibold flex-shrink-0" style={{ color: PRIMARY }}>▶ {sub.num} {subLabel}</span>
+        {sub.articleRef && (
+          <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0" style={{ background: "#fef9c3", color: "#a16207" }}>⚖️ {sub.articleRef}</span>
+        )}
+        {(waList.length > 0 || raList.length > 0) && (
+          <>
+            <span className="text-xs text-slate-300 flex-shrink-0">|</span>
+            <span className="text-xs text-slate-400 flex-shrink-0">작업 속성</span>
+            {waList.map((wa) => wa && (
+              <span key={wa.id} className="text-xs px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600">{wa.label}</span>
+            ))}
+            {raList.length > 0 && <span className="text-xs text-slate-300 flex-shrink-0">·</span>}
+            {raList.map((ra) => ra && (
+              <span key={ra.id} className="text-xs px-2 py-0.5 rounded-full font-medium text-white" style={{ background: ra.color ?? "#dc2626" }}>⚠ {ra.label}</span>
+            ))}
+          </>
+        )}
+        <div className="flex-1" />
+        <button
+          onClick={handleReclassify}
+          className="flex-shrink-0 text-xs px-2.5 py-1 rounded-lg border font-medium transition-all hover:bg-teal-50"
+          style={{ borderColor: `${PRIMARY}55`, color: PRIMARY }}
+        >
+          ✏️ 작업분류 변경
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main SectionForm ────────────────────────────────────────────
 export default function SectionForm() {
   const { sections } = useWorkPlanStore();
@@ -2830,6 +3946,7 @@ export default function SectionForm() {
 
   return (
     <div className="space-y-5 px-5 py-5">
+      <ClassificationBanner />
       {activeSections.map((section, idx) => (
         <SectionFormEntry
           key={section.id}

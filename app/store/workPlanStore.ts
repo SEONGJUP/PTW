@@ -6,17 +6,17 @@ import {
   toLegacyEquipmentTypes,
 } from "./workPlanTaxonomy";
 
-// ─── 건설기계 9종 (산업안전보건법 기준) ──────────────────────────
+// ─── 건설기계 9종 (고용노동부 작업계획서 서식 기준) ───────────────
 export const CONSTRUCTION_EQUIPMENT_TYPES = {
-  truck: { label: "트럭계 (덤프트럭 등)", num: 1, icon: "🚛" },
-  bulldozer: { label: "불도저", num: 2, icon: "🚜" },
-  grader: { label: "모터그레이더", num: 3, icon: "🚧" },
-  loader: { label: "로더", num: 4, icon: "🏗️" },
-  scraper: { label: "스크레이퍼", num: 5, icon: "🔧" },
-  crane: { label: "크레인 (이동식 포함)", num: 6, icon: "🏗️" },
-  excavator: { label: "굴착기", num: 7, icon: "⛏️" },
-  pile_driver: { label: "항타기·항발기", num: 8, icon: "🔨" },
-  roller: { label: "롤러", num: 9, icon: "🛞" },
+  truck:         { label: "트럭",           num: 1, icon: "🚛" },
+  excavator:     { label: "굴착기",         num: 2, icon: "⛏️" },
+  aerial_lift:   { label: "고소작업대",     num: 3, icon: "🪜" },
+  crane:         { label: "크레인",         num: 4, icon: "🏗" },
+  concrete_pump: { label: "콘크리트펌프카", num: 5, icon: "🪣" },
+  pile_driver:   { label: "항타기",         num: 6, icon: "🔨" },
+  forklift:      { label: "지게차",         num: 7, icon: "🔩" },
+  loader:        { label: "로더",           num: 8, icon: "🏗️" },
+  roller:        { label: "롤러",           num: 9, icon: "🛞" },
 } as const;
 
 export type EquipmentType = keyof typeof CONSTRUCTION_EQUIPMENT_TYPES;
@@ -222,19 +222,16 @@ export interface WorkPlanState {
 // ─── 공통 섹션 정의 ───────────────────────────────────────────────
 const COMMON_SECTIONS: Omit<Section, "order">[] = [
   { id: "overview",           label: "작업 개요",                    required: true,  enabled: true  },
-  { id: "work_description",   label: "작업 설명 (목적/세부내용/범위)", required: false, enabled: false },
+  { id: "work_description",   label: "작업 설명",                     required: false, enabled: false },
   { id: "work_environment",   label: "작업환경",                     required: false, enabled: false },
+  { id: "work_personnel",     label: "작업 인원 배치",                required: false, enabled: true  },
   { id: "heavy_goods",        label: "중량물 취급",                   required: false, enabled: false },
   { id: "equipment_info",     label: "사용 장비 정보",                required: false, enabled: true  },
-  { id: "work_personnel",     label: "작업 인원 배치",                required: false, enabled: true  },
-  { id: "operators",          label: "운전원·유도자·지휘자",           required: false, enabled: false },
   { id: "risk",               label: "위험성평가",                   required: false, enabled: true  },
   { id: "safety_checklist",   label: "안전점검",                     required: false, enabled: true  },
-  { id: "emergency_contact",  label: "비상연락망",                   required: false, enabled: true  },
   { id: "training",           label: "안전교육",                     required: false, enabled: true  },
+  { id: "emergency_contact",  label: "비상연락망",                   required: false, enabled: true  },
   { id: "disaster_prevention",label: "재해예방 대책",                 required: false, enabled: false },
-  { id: "drawing",            label: "도면",                         required: false, enabled: true  },
-  { id: "other_files",       label: "기타 첨부파일",                  required: false, enabled: true  },
   // ── 법정 의무 섹션 (별표4, 제38조제1항 관련) ─ 기본 비활성 ────
   { id: "pre_survey", label: "사전조사 기록 [법정]", required: false, enabled: false },
   { id: "electrical_safety", label: "전기안전작업계획 [법정]", required: false, enabled: false },
@@ -242,68 +239,72 @@ const COMMON_SECTIONS: Omit<Section, "order">[] = [
   { id: "tunnel_plan", label: "터널굴착 계획 [법정]", required: false, enabled: false },
   { id: "chemical_ops", label: "화학설비 운전계획 [법정]", required: false, enabled: false },
   { id: "demolition_plan", label: "해체 계획 [법정]", required: false, enabled: false },
+  { id: "drawing",            label: "도면",                         required: false, enabled: true  },
+  { id: "other_files",        label: "기타 첨부파일",                 required: false, enabled: true  },
   { id: "signature", label: "서명 및 결재", required: true, enabled: true },
 ];
 
-// ─── 건설기계별 특화 섹션 ─────────────────────────────────────────
+// ─── 건설기계별 특화 섹션 (고용노동부 서식 기반) ─────────────────
 export const EQUIPMENT_SPECIFIC_SECTIONS: Record<EquipmentType, Omit<Section, "order">[]> = {
   truck: [
-    { id: "truck_machine_spec", label: "기계 제원", required: false, enabled: true },
-    { id: "truck_route", label: "운행 경로", required: false, enabled: true },
-    { id: "truck_load", label: "최대 적재량 및 하중", required: false, enabled: true },
-    { id: "truck_road_condition", label: "도로 상태 및 구배", required: false, enabled: true },
+    { id: "truck_machine_spec",        label: "기계 제원",           required: false, enabled: true },
+    { id: "truck_spec",                label: "트럭 전용 제원",      required: false, enabled: true },
+    { id: "truck_route",               label: "운행 경로",           required: false, enabled: true },
+    { id: "truck_load",                label: "최대 적재량 및 하중", required: false, enabled: true },
+    { id: "truck_road_condition",      label: "도로 상태 및 구배",   required: false, enabled: true },
     { id: "truck_overturn_prevention", label: "전복·낙하 방지 조치", required: false, enabled: true },
-  ],
-  bulldozer: [
-    { id: "bulldozer_machine_spec", label: "기계 제원", required: false, enabled: true },
-    { id: "bulldozer_slope", label: "작업 구역 경사도", required: false, enabled: true },
-    { id: "bulldozer_buried", label: "매설물 현황", required: false, enabled: true },
-    { id: "bulldozer_obstacle", label: "암석·지장물 현황", required: false, enabled: true },
-    { id: "bulldozer_alarm", label: "경보장치 설치 여부", required: false, enabled: true },
-  ],
-  grader: [
-    { id: "grader_machine_spec", label: "기계 제원", required: false, enabled: true },
-    { id: "grader_section", label: "작업 구간 및 길이", required: false, enabled: true },
-    { id: "grader_road", label: "노면 상태", required: false, enabled: true },
-    { id: "grader_speed", label: "운행 속도 제한", required: false, enabled: true },
-  ],
-  loader: [
-    { id: "loader_machine_spec", label: "기계 제원", required: false, enabled: true },
-    { id: "loader_bucket", label: "버킷 용량", required: false, enabled: true },
-    { id: "loader_radius", label: "작업 반경", required: false, enabled: true },
-    { id: "loader_method", label: "적재 방법", required: false, enabled: true },
-  ],
-  scraper: [
-    { id: "scraper_machine_spec", label: "기계 제원", required: false, enabled: true },
-    { id: "scraper_section", label: "작업 길이 및 폭", required: false, enabled: true },
-    { id: "scraper_depth", label: "절취 깊이", required: false, enabled: true },
-  ],
-  crane: [
-    { id: "crane_machine_spec", label: "기계 제원", required: false, enabled: true },
-    { id: "crane_capacity", label: "최대 인양하중 및 반경", required: false, enabled: true },
-    { id: "crane_rigging", label: "달기기구 종류 및 수량", required: false, enabled: true },
-    { id: "crane_swing", label: "선회 반경 내 장애물", required: false, enabled: true },
-    { id: "crane_signal", label: "신호 방법 및 신호수 배치", required: false, enabled: true },
-    { id: "crane_ground", label: "하부지반 지지력 확인", required: false, enabled: true },
+    { id: "truck_checklist",           label: "사전 점검표",         required: false, enabled: true },
   ],
   excavator: [
-    { id: "excavator_machine_spec", label: "기계 제원", required: false, enabled: true },
-    { id: "excavator_depth", label: "굴착 깊이 및 기울기", required: false, enabled: true },
-    { id: "excavator_ground", label: "지반 상태 (토질조사 결과)", required: false, enabled: true },
-    { id: "excavator_utility", label: "매설물 확인 (가스/전기/통신)", required: false, enabled: true },
-    { id: "excavator_retaining", label: "흙막이 공법", required: false, enabled: true },
+    { id: "excavator_machine_spec", label: "기계 제원",                     required: false, enabled: true },
+    { id: "excavator_depth",        label: "굴착 깊이 및 기울기",           required: false, enabled: true },
+    { id: "excavator_ground",       label: "지반 상태 (토질조사 결과)",     required: false, enabled: true },
+    { id: "excavator_retaining",    label: "흙막이 공법",                   required: false, enabled: true },
+    { id: "excavator_utility",      label: "매설물 확인 (가스/전기/통신)", required: false, enabled: true },
+    { id: "excavator_checklist",    label: "작동상태 사전 점검표",          required: false, enabled: true },
+  ],
+  aerial_lift: [
+    { id: "aerial_lift_machine_spec", label: "기계 제원",   required: false, enabled: true },
+    { id: "aerial_lift_work_plan",    label: "작업 계획",   required: false, enabled: true },
+    { id: "aerial_lift_checklist",    label: "사전 점검표", required: false, enabled: true },
+  ],
+  crane: [
+    { id: "crane_machine_spec", label: "기계 제원",                required: false, enabled: true },
+    { id: "crane_capacity",     label: "최대 인양하중 및 반경",    required: false, enabled: true },
+    { id: "crane_rigging",      label: "달기기구 종류 및 수량",    required: false, enabled: true },
+    { id: "crane_swing",        label: "선회 반경 내 장애물",      required: false, enabled: true },
+    { id: "crane_signal",       label: "신호 방법 및 신호수 배치", required: false, enabled: true },
+    { id: "crane_ground",       label: "하부지반 지지력 확인",     required: false, enabled: true },
+    { id: "crane_checklist",    label: "사전 점검표",              required: false, enabled: true },
+  ],
+  concrete_pump: [
+    { id: "concrete_pump_machine_spec", label: "기계 제원",   required: false, enabled: true },
+    { id: "concrete_pump_work_plan",    label: "작업 계획",   required: false, enabled: true },
+    { id: "concrete_pump_checklist",    label: "사전 점검표", required: false, enabled: true },
   ],
   pile_driver: [
-    { id: "pile_driver_machine_spec", label: "기계 제원", required: false, enabled: true },
-    { id: "pile_method", label: "항타 공법", required: false, enabled: true },
-    { id: "pile_type", label: "파일 종류", required: false, enabled: true },
-    { id: "pile_noise", label: "소음·진동 관리", required: false, enabled: true },
+    { id: "pile_driver_machine_spec", label: "기계 제원",       required: false, enabled: true },
+    { id: "pile_method",              label: "항타 공법",       required: false, enabled: true },
+    { id: "pile_type",                label: "파일 종류",       required: false, enabled: true },
+    { id: "pile_noise",               label: "소음·진동 관리", required: false, enabled: true },
+    { id: "pile_checklist",           label: "사전 점검표",     required: false, enabled: true },
+  ],
+  forklift: [
+    { id: "forklift_machine_spec", label: "기계 제원",   required: false, enabled: true },
+    { id: "forklift_work_plan",    label: "작업 계획",   required: false, enabled: true },
+    { id: "forklift_checklist",    label: "사전 점검표", required: false, enabled: true },
+  ],
+  loader: [
+    { id: "loader_machine_spec", label: "기계 제원",   required: false, enabled: true },
+    { id: "loader_bucket",       label: "작업계획",    required: false, enabled: true },
+    { id: "loader_checklist",    label: "사전 점검표", required: false, enabled: true },
   ],
   roller: [
-    { id: "roller_machine_spec", label: "기계 제원", required: false, enabled: true },
-    { id: "roller_section", label: "다짐 구간 및 면적", required: false, enabled: true },
-    { id: "roller_count", label: "다짐 횟수 및 방법", required: false, enabled: true },
-    { id: "roller_compaction", label: "다짐도 관리", required: false, enabled: true },
+    { id: "roller_machine_spec", label: "기계 제원",         required: false, enabled: true },
+    { id: "roller_section",      label: "다짐 구간 및 면적", required: false, enabled: true },
+    { id: "roller_count",        label: "다짐 횟수 및 방법", required: false, enabled: true },
+    { id: "roller_compaction",   label: "다짐도 관리",       required: false, enabled: true },
+    { id: "roller_checklist",    label: "사전 점검표",       required: false, enabled: true },
   ],
 };
 
@@ -311,8 +312,8 @@ export const EQUIPMENT_SPECIFIC_SECTIONS: Record<EquipmentType, Omit<Section, "o
 // key: "${profile}_${category}"  value: enabled section IDs
 export const DEFAULT_SECTION_PRESETS: Record<string, string[]> = {
   // ── 정식 ──────────────────────────────────────────────────────
-  full_construction_equipment: ["overview","equipment_info","work_personnel","operators","risk","safety_checklist","emergency_contact","training","signature"],
-  full_lifting:                ["overview","heavy_goods","equipment_info","work_personnel","operators","risk","safety_checklist","emergency_contact","training","pre_survey","signature"],
+  full_construction_equipment: ["overview","equipment_info","work_personnel","risk","safety_checklist","emergency_contact","training","signature"],
+  full_lifting:                ["overview","heavy_goods","equipment_info","work_personnel","risk","safety_checklist","emergency_contact","training","pre_survey","signature"],
   full_excavation:             ["overview","equipment_info","pre_survey","work_personnel","risk","safety_checklist","emergency_contact","training","drawing","signature"],
   full_hot_work:               ["overview","work_personnel","risk","safety_checklist","chemical_ops","emergency_contact","training","signature"],
   full_confined_space:         ["overview","work_personnel","risk","safety_checklist","emergency_contact","training","signature"],
@@ -381,7 +382,7 @@ function buildSections(
 
   // 장비 번호 순으로 정렬 (Bug 2-3)
   const sortedEquipments = [...equipments].sort(
-    (a, b) => CONSTRUCTION_EQUIPMENT_TYPES[a].num - CONSTRUCTION_EQUIPMENT_TYPES[b].num
+    (a, b) => (CONSTRUCTION_EQUIPMENT_TYPES[a]?.num ?? 99) - (CONSTRUCTION_EQUIPMENT_TYPES[b]?.num ?? 99)
   );
 
   const equipmentSpecific: Omit<Section, "order">[] = [];

@@ -6,6 +6,7 @@ import { useFormDefaultStore, makeDefaultKey, PlanDefaults } from "@/store/formD
 import {
   WORK_CATEGORIES,
   WORK_SUBCATEGORIES,
+  EQUIPMENT_GROUPS,
   EQUIPMENT_GROUPS_DISPLAY,
   EQUIPMENT_MAP,
   WORK_ATTRIBUTES,
@@ -34,21 +35,19 @@ const SECTION_META: { id: string; label: string; icon: string; required?: boolea
   { id: "heavy_goods",         icon: "⚖️", label: "중량물 취급" },
   { id: "equipment_info",      icon: "🚜", label: "사용 장비 정보" },
   { id: "work_personnel",      icon: "👷", label: "작업 인원 배치" },
-  { id: "operators",           icon: "🧑‍✈️", label: "운전원·유도자·지휘자" },
   { id: "risk",                icon: "⚠️", label: "위험성평가" },
   { id: "safety_checklist",    icon: "✅", label: "안전점검" },
-  { id: "emergency_contact",   icon: "📞", label: "비상연락망" },
   { id: "training",            icon: "🎓", label: "안전교육" },
+  { id: "emergency_contact",   icon: "📞", label: "비상연락망" },
   { id: "disaster_prevention", icon: "🛡️", label: "재해예방 대책" },
-  { id: "drawing",             icon: "📐", label: "도면" },
-  { id: "other_files",         icon: "📎", label: "기타 첨부파일" },
   { id: "pre_survey",          icon: "🔍", label: "사전조사 기록",     legal: true },
   { id: "electrical_safety",   icon: "⚡", label: "전기안전작업계획",  legal: true },
   { id: "heavy_load_plan",     icon: "🏗️", label: "중량물 취급 계획", legal: true },
   { id: "tunnel_plan",         icon: "🚇", label: "터널굴착 계획",     legal: true },
   { id: "chemical_ops",        icon: "🧪", label: "화학설비 운전계획", legal: true },
   { id: "demolition_plan",     icon: "🔨", label: "해체 계획",         legal: true },
-  { id: "signature",           icon: "✍️", label: "서명 및 결재",      required: true },
+  { id: "drawing",             icon: "📐", label: "도면" },
+  { id: "other_files",         icon: "📎", label: "기타 첨부파일" },
 ];
 
 const LEGAL_REFS: Record<string, string> = {
@@ -69,20 +68,17 @@ const SECTION_FIELDS: Record<string, FieldDef[]> = {
     { label: "작업인원", type: "number" },
     { label: "현장명", type: "text", note: "읽기 전용 (시스템 연동)" },
     { label: "작업순서 및 작업방법", type: "table", cols: 2, tableHeaders: ["작업명", "작업내용", "담당"] },
-    { label: "작업 목적", type: "textarea", cols: 2 },
-    { label: "작업환경 메모", type: "textarea", cols: 2 },
   ],
   work_description: [
     { label: "작업 목적", type: "textarea", cols: 2 },
     { label: "작업 세부내용", type: "textarea", cols: 2 },
     { label: "작업 범위", type: "textarea", cols: 2 },
-    { label: "작업 방법", type: "textarea", cols: 2 },
   ],
   work_environment: [
     { label: "날씨", type: "text" }, { label: "온도", type: "text" },
     { label: "환기", type: "text" }, { label: "조명", type: "text" },
-    { label: "소음", type: "text" }, { label: "주변 안전성", type: "text" },
-    { label: "접근 경로", type: "text" }, { label: "특수 조건", type: "text" },
+    { label: "소음", type: "text" }, { label: "주변 안전상태", type: "text" },
+    { label: "진입로 상태", type: "text" }, { label: "상세내용", type: "textarea", cols: 2 },
   ],
   heavy_goods: [
     { label: "중량물 목록", type: "table", cols: 2, tableHeaders: ["중량물명", "무게", "형태", "크기", "취급방법", "안전장치"] },
@@ -92,12 +88,8 @@ const SECTION_FIELDS: Record<string, FieldDef[]> = {
     { label: "기타 장비 목록", type: "table", cols: 2, tableHeaders: ["기종명", "규격", "수량", "임차/자사"] },
   ],
   work_personnel: [
-    { label: "운전원 (명)", type: "number" }, { label: "신호수 (명)", type: "number" },
-    { label: "유도원 (명)", type: "number" }, { label: "감시인 (명)", type: "number" },
-    { label: "작업자 상세 목록", type: "table", cols: 2, tableHeaders: ["이름", "직책", "역할", "연락처"] },
-  ],
-  operators: [
-    { label: "운전원·유도자·지휘자 목록", type: "table", cols: 2, tableHeaders: ["역할", "이름", "면허종류", "면허번호", "연락처", "안전교육 여부"] },
+    { label: "역할별 투입 인원 (자동 집계)", type: "text", cols: 2, note: "테이블 행 기준 자동 산출" },
+    { label: "인원 목록", type: "table", cols: 2, tableHeaders: ["역할", "이름", "면허종류", "면허번호", "연락처", "교육이수"] },
   ],
   risk: [
     { label: "위험성평가 테이블", type: "table", cols: 2, tableHeaders: ["작업공정", "단위작업", "위험요인", "저감대책", "위험등급", "중점관리"] },
@@ -318,7 +310,7 @@ type Step = "classify" | "configure";
 export default function WorkPlanSettingsPage() {
   const { sectionFavorites, saveFavorite, deleteFavorite, renameFavorite, loadFavorite, overwriteFavorite } = useWorkPlanStore();
   const { presets, setPreset, resetPreset } = useSectionSubPresetStore();
-  const { overrides, setOverride, resetOverride, resetAll } = useTaxonomyOverrideStore();
+  const { overrides, setOverride, resetOverride, resetAll, defaultEquipmentGroupIds, setDefaultEquipmentGroups } = useTaxonomyOverrideStore();
   const { setDefault, getDefault } = useFormDefaultStore();
 
   const [step, setStep] = useState<Step>("classify");
@@ -355,6 +347,23 @@ export default function WorkPlanSettingsPage() {
       ? effective.recommendedEquipmentIds.filter((x) => x !== id)
       : [...effective.recommendedEquipmentIds, id];
     setOverride(subId, { ...effective, recommendedEquipmentIds: next });
+  };
+  const toggleEqGroup = (grpId: string) => {
+    if (!effective || !subId) return;
+    const grp = EQUIPMENT_GROUPS.find((g) => g.id === grpId);
+    if (!grp) return;
+    const itemIds = grp.items.map((i) => i.id);
+    const allSel = itemIds.every((id) => effective.recommendedEquipmentIds.includes(id));
+    const next = allSel
+      ? effective.recommendedEquipmentIds.filter((id) => !itemIds.includes(id))
+      : [...new Set([...effective.recommendedEquipmentIds, ...itemIds])];
+    setOverride(subId, { ...effective, recommendedEquipmentIds: next });
+  };
+  const toggleDefaultGroup = (grpId: string) => {
+    const next = defaultEquipmentGroupIds.includes(grpId)
+      ? defaultEquipmentGroupIds.filter((id) => id !== grpId)
+      : [...defaultEquipmentGroupIds, grpId];
+    setDefaultEquipmentGroups(next);
   };
 
   const addCustomEqLabel = () => {
@@ -507,6 +516,7 @@ export default function WorkPlanSettingsPage() {
           )}
         </div>
       </div>
+
 
       {/* ── Body: step content + favorites sidebar ── */}
       <div className="flex flex-1 overflow-hidden">
@@ -689,35 +699,26 @@ export default function WorkPlanSettingsPage() {
                         {effective.recommendedEquipmentIds.length + (effective.customEquipmentLabels?.length ?? 0)}개 선택
                       </span>
                     </div>
-                    <div className="space-y-4">
-                      {EQUIPMENT_GROUPS_DISPLAY.map((grp) => {
-                        const selCount = grp.items.filter((i) => effective.recommendedEquipmentIds.includes(i.id)).length;
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {EQUIPMENT_GROUPS.map((grp) => {
+                        const itemIds = grp.items.map((i) => i.id);
+                        const selCount = itemIds.filter((id) => effective.recommendedEquipmentIds.includes(id)).length;
+                        const allSel = selCount === itemIds.length;
+                        const partSel = selCount > 0 && !allSel;
                         return (
-                          <div key={grp.id}>
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <span style={{ fontSize: 13 }}>{grp.icon}</span>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: selCount > 0 ? PRIMARY : "#94a3b8" }}>{grp.label}</span>
-                              {selCount > 0 && <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 999, background: PRIMARY_LIGHT, color: PRIMARY }}>{selCount}개</span>}
-                            </div>
-                            <div className="flex flex-wrap gap-2 pl-1">
-                              {grp.items.map((item) => {
-                                const sel = effective.recommendedEquipmentIds.includes(item.id);
-                                return (
-                                  <button key={item.id} onClick={() => updateEq(item.id)}
-                                    className="rounded-full border font-medium transition-all flex items-center gap-1.5"
-                                    style={{ fontSize: 12, padding: "6px 14px", background: sel ? PRIMARY : "white", borderColor: sel ? PRIMARY : "#cbd5e1", color: sel ? "white" : "#475569" }}>
-                                    <span className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0"
-                                      style={{ borderColor: sel ? "rgba(255,255,255,0.8)" : "#94a3b8", background: sel ? "rgba(255,255,255,0.25)" : "transparent" }}>
-                                      {sel && <span style={{ fontSize: 8, color: "white" }}>✓</span>}
-                                    </span>
-                                    {item.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
+                          <button key={grp.id} onClick={() => toggleEqGroup(grp.id)}
+                            className="flex items-center gap-1.5 rounded-full border font-medium transition-all"
+                            style={{ fontSize: 12, padding: "6px 14px",
+                              background: allSel ? PRIMARY : partSel ? PRIMARY_LIGHT : "white",
+                              borderColor: selCount > 0 ? PRIMARY : "#cbd5e1",
+                              color: allSel ? "white" : selCount > 0 ? PRIMARY : "#475569" }}>
+                            <span>{grp.icon}</span>
+                            <span>{grp.label}</span>
+                            {allSel && <span style={{ fontSize: 10 }}>✓</span>}
+                          </button>
                         );
                       })}
+                    </div>
 
                       {/* 기타 직접입력 */}
                       <div className="rounded-xl border border-dashed border-slate-200 p-4" style={{ background: "#f8fafc" }}>
@@ -752,7 +753,6 @@ export default function WorkPlanSettingsPage() {
                           </button>
                         </div>
                       </div>
-                    </div>
                   </section>
 
                   {/* 현재 기본값 요약 */}
@@ -768,11 +768,16 @@ export default function WorkPlanSettingsPage() {
                         const ra = RISK_ATTRIBUTES.find((a) => a.id === id);
                         return <span key={id} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: ra?.color ?? "#dc2626", color: "white", fontWeight: 500 }}>⚠ {ra?.label}</span>;
                       })}
-                      {effective.recommendedEquipmentIds.map((id) => (
-                        <span key={id} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: `${PRIMARY}15`, color: PRIMARY, fontWeight: 500 }}>
-                          🔧 {EQUIPMENT_MAP[id]?.label ?? id}
-                        </span>
-                      ))}
+                      {(() => {
+                        const selGrps = EQUIPMENT_GROUPS.filter((g) =>
+                          g.items.some((i) => effective.recommendedEquipmentIds.includes(i.id))
+                        );
+                        return selGrps.map((g) => (
+                          <span key={g.id} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: `${PRIMARY}15`, color: PRIMARY, fontWeight: 500 }}>
+                            {g.icon} {g.label}
+                          </span>
+                        ));
+                      })()}
                       {(effective.customEquipmentLabels ?? []).map((label, i) => (
                         <span key={`c${i}`} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: `${PRIMARY}15`, color: PRIMARY, fontWeight: 500 }}>
                           🔧 {label} (기타)
