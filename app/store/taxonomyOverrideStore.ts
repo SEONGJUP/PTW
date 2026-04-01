@@ -14,6 +14,10 @@ interface TaxonomyOverrideState {
   setOverride: (subId: string, override: SubOverride) => void;
   resetOverride: (subId: string) => void;
   resetAll: () => void;
+
+  /** 작업계획서 생성 시 기본으로 활성화할 장비 그룹 IDs (grp_A, grp_B …) */
+  defaultEquipmentGroupIds: string[];
+  setDefaultEquipmentGroups: (ids: string[]) => void;
 }
 
 export const useTaxonomyOverrideStore = create<TaxonomyOverrideState>()(
@@ -29,6 +33,9 @@ export const useTaxonomyOverrideStore = create<TaxonomyOverrideState>()(
           return { overrides: next };
         }),
       resetAll: () => set({ overrides: {} }),
+
+      defaultEquipmentGroupIds: [],
+      setDefaultEquipmentGroups: (ids) => set({ defaultEquipmentGroupIds: ids }),
     }),
     { name: "ptw-taxonomy-overrides" }
   )

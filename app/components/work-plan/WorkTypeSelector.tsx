@@ -5,6 +5,7 @@ import {
   WORK_SUBCATEGORIES,
   WORK_ATTRIBUTES,
   RISK_ATTRIBUTES,
+  EQUIPMENT_GROUPS,
   EQUIPMENT_GROUPS_DISPLAY,
   getSubcategoriesByCategoryId,
   WPSubcategory,
@@ -56,7 +57,7 @@ export default function WorkTypeSelector({ value, onConfirm, onClose, onLoadFavo
   const [hoveredFavId, setHoveredFavId] = useState<string | null>(null);
 
   const subcategories = getSubcategoriesByCategoryId(catId);
-  const { overrides } = useTaxonomyOverrideStore();
+  const { overrides, defaultEquipmentGroupIds } = useTaxonomyOverrideStore();
 
   const handleCategoryClick = (id: string) => { setCatId(id); setSubId(""); };
 
@@ -66,7 +67,17 @@ export default function WorkTypeSelector({ value, onConfirm, onClose, onLoadFavo
     const eff = getEffectiveRecommended(sub, overrides, sub.id);
     setWaIds(eff.recommendedWorkAttrIds);
     setRaIds(eff.recommendedRiskAttrIds);
-    setEqIds(eff.recommendedEquipmentIds);
+    // 기본 그룹 설정이 있으면 해당 그룹에 속한 추천 장비만 선택, 없으면 전체 추천
+    if (defaultEquipmentGroupIds.length > 0) {
+      const defaultItemIds = new Set(
+        EQUIPMENT_GROUPS
+          .filter((g) => defaultEquipmentGroupIds.includes(g.id))
+          .flatMap((g) => g.items.map((i) => i.id))
+      );
+      setEqIds(eff.recommendedEquipmentIds.filter((id) => defaultItemIds.has(id)));
+    } else {
+      setEqIds(eff.recommendedEquipmentIds);
+    }
     setCustomEqLabels(eff.customEquipmentLabels ?? []);
   };
 
@@ -566,36 +577,35 @@ export default function WorkTypeSelector({ value, onConfirm, onClose, onLoadFavo
                       </span>
                     )}
                   </div>
-                  <div className="space-y-3">
-                    {EQUIPMENT_GROUPS_DISPLAY.map((grp) => {
-                      const selCount = grp.items.filter((i) => eqIds.includes(i.id)).length;
+                  <div className="flex flex-wrap gap-2">
+                    {EQUIPMENT_GROUPS.map((grp) => {
+                      const itemIds = grp.items.map((i) => i.id);
+                      const selCount = itemIds.filter((id) => eqIds.includes(id)).length;
+                      const allSel = selCount === itemIds.length;
+                      const partSel = selCount > 0 && !allSel;
+                      const toggleGroup = () => {
+                        if (allSel) {
+                          setEqIds((prev) => prev.filter((id) => !itemIds.includes(id)));
+                        } else {
+                          setEqIds((prev) => [...new Set([...prev, ...itemIds])]);
+                        }
+                      };
                       return (
-                        <div key={grp.id}>
-                          <div className="flex items-center gap-1.5 mb-1.5">
-                            <span style={{ fontSize: 12 }}>{grp.icon}</span>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: selCount > 0 ? PRIMARY : "#94a3b8" }}>{grp.label}</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5 pl-1">
-                            {grp.items.map((item) => {
-                              const sel = eqIds.includes(item.id);
-                              return (
-                                <button
-                                  key={item.id}
-                                  onClick={() => toggleEqId(item.id)}
-                                  className="rounded-full border font-medium transition-all"
-                                  style={{
-                                    fontSize: 11, padding: "4px 10px",
-                                    background: sel ? PRIMARY : "white",
-                                    borderColor: sel ? PRIMARY : "#cbd5e1",
-                                    color: sel ? "white" : "#475569",
-                                  }}
-                                >
-                                  {sel && "✓ "}{item.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
+                        <button
+                          key={grp.id}
+                          onClick={toggleGroup}
+                          className="flex items-center gap-1.5 rounded-full border font-medium transition-all"
+                          style={{
+                            fontSize: 11, padding: "4px 12px",
+                            background: allSel ? PRIMARY : partSel ? PRIMARY_LIGHT : "white",
+                            borderColor: selCount > 0 ? PRIMARY : "#cbd5e1",
+                            color: allSel ? "white" : selCount > 0 ? PRIMARY : "#475569",
+                          }}
+                        >
+                          <span>{grp.icon}</span>
+                          <span>{grp.label}</span>
+                          {allSel && <span style={{ fontSize: 9 }}>✓</span>}
+                        </button>
                       );
                     })}
 

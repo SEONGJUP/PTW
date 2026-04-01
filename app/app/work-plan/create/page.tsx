@@ -49,6 +49,13 @@ export default function CreateWorkPlanPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 분류 배너 "분류 변경" 버튼 이벤트 수신
+  useEffect(() => {
+    const handler = () => setShowSelector(true);
+    window.addEventListener("ptw:openClassificationSelector", handler);
+    return () => window.removeEventListener("ptw:openClassificationSelector", handler);
+  }, []);
+
   const handleConfirmType = (next: WorkClassification) => {
     const subInfo = getSubcategoryById(next.subcategoryId);
     const defaultEqIds = subInfo?.recommendedEquipmentIds ?? [];

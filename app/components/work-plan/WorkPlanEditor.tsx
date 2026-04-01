@@ -572,63 +572,6 @@ export default function WorkPlanEditor({ onBack }: { onBack?: () => void } = {})
             ))}
           </div>
 
-          {/* Favorites button */}
-          <button
-            onClick={() => setShowFavorites(true)}
-            className="text-xs px-2.5 py-1 rounded-lg border font-medium transition-all hover:opacity-80"
-            style={{
-              borderColor: documentProfile === "custom" ? `${PRIMARY}55` : "#e2e8f0",
-              color: documentProfile === "custom" ? PRIMARY : "#94a3b8",
-              background: documentProfile === "custom" ? PRIMARY_LIGHT : "transparent",
-            }}
-            title="즐겨찾기 섹션 구성 저장/불러오기"
-          >
-            ⭐ 즐겨찾기
-          </button>
-
-          {/* Title preview */}
-          {overview.title && (
-            <div className="hidden md:flex items-center gap-2">
-              <span className="text-xs text-slate-300">|</span>
-              <span className="text-xs font-medium text-slate-600 max-w-48 truncate">
-                {overview.title}
-              </span>
-            </div>
-          )}
-
-          <div className="flex-1" />
-
-          {/* Signature button */}
-          <button
-            onClick={() => setShowSignature(true)}
-            className="text-xs px-2.5 py-1 rounded-lg border font-medium transition-all hover:opacity-80"
-            style={{
-              borderColor: doneSignatures === signatures.length ? `${PRIMARY}55` : "#e2e8f0",
-              color: doneSignatures === signatures.length ? PRIMARY : "#94a3b8",
-              background: doneSignatures === signatures.length ? PRIMARY_LIGHT : "transparent",
-            }}
-          >
-            ✍ 서명·결재
-            <SignatureStatusBadge />
-          </button>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={handleTempSave}
-              className="text-xs px-2.5 py-1 rounded-lg border font-medium transition-all hover:opacity-80"
-              style={{
-                borderColor: saveStatus === "saved" ? `${PRIMARY}55` : "#e2e8f0",
-                color: saveStatus === "saved" ? PRIMARY : "#94a3b8",
-                background: saveStatus === "saved" ? PRIMARY_LIGHT : "transparent",
-              }}
-            >
-              {saveStatus === "saving" ? "⏳ 저장중..." : saveStatus === "saved" ? "✓ 저장됨" : "💾 임시저장"}
-            </button>
-            <PdfExport
-              state={{ documentProfile, planCategory: useWorkPlanStore.getState().planCategory, sections, formData, signatures, attachments }}
-            />
-          </div>
         </div>
       </div>
 
@@ -645,61 +588,22 @@ export default function WorkPlanEditor({ onBack }: { onBack?: () => void } = {})
         </div>
       </div>
 
-      {/* Bottom action bar */}
+      {/* Bottom save bar */}
       <div
-        className="flex items-center justify-between px-4 py-2 border-t flex-shrink-0"
+        className="flex items-center justify-end px-4 py-2 border-t flex-shrink-0"
         style={{ background: "white", borderColor: "#e8edf2", boxShadow: "0 -1px 3px rgba(0,0,0,0.03)" }}
       >
-        <div className="flex items-center gap-2 min-w-0 flex-1 mr-4">
-          <BottomClassificationSummary classification={classification} documentProfile={documentProfile} />
-        </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Link
-            href="/work-plan/equipment"
-            className="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all text-slate-500 hover:border-teal-300 hover:text-teal-600 hover:bg-teal-50"
-            style={{ borderColor: "#e2e8f0" }}
-          >
-            🚜 장비·기계 관리
-          </Link>
-          <Link
-            href="/work-plan/permits"
-            className="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all text-slate-500 hover:border-teal-300 hover:text-teal-600 hover:bg-teal-50"
-            style={{ borderColor: "#e2e8f0" }}
-          >
-            🔑 작업허가서{linkedPermitCount > 0 && <span className="ml-1 px-1 py-0 rounded-full text-white font-bold" style={{ background: PRIMARY, fontSize: 9 }}>{linkedPermitCount}</span>}
-          </Link>
-          <button
-            onClick={handleCreateLinkedPermit}
-            className="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all"
-            style={{ borderColor: PRIMARY, color: PRIMARY, background: PRIMARY_LIGHT }}
-            title="현재 계획서에 연동된 작업허가서 생성"
-          >
-            🔑 허가서 생성
-          </button>
-          <button
-            onClick={() => setShowPreview(true)}
-            className="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all text-slate-500 hover:border-teal-300 hover:text-teal-600 hover:bg-teal-50"
-            style={{ borderColor: "#e2e8f0" }}
-          >
-            👁 미리보기
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all text-slate-500 hover:bg-slate-50"
-            style={{ borderColor: "#e2e8f0" }}
-          >
-            🖨 인쇄
-          </button>
-          <button
-            onClick={handleExport}
-            className="text-xs px-3 py-1.5 rounded-lg text-white font-medium transition-all active:scale-95"
-            style={{ background: PRIMARY, boxShadow: "0 1px 4px rgba(0,183,175,0.3)" }}
-            onMouseOver={(e) => (e.currentTarget.style.background = PRIMARY_DARK)}
-            onMouseOut={(e) => (e.currentTarget.style.background = PRIMARY)}
-          >
-            📤 내보내기
-          </button>
-        </div>
+        <button
+          onClick={handleTempSave}
+          className="text-sm px-5 py-1.5 rounded-lg font-semibold transition-all active:scale-95"
+          style={{
+            background: saveStatus === "saving" ? "#94a3b8" : saveStatus === "saved" ? PRIMARY_DARK : PRIMARY,
+            color: "white",
+            boxShadow: "0 1px 4px rgba(0,183,175,0.3)",
+          }}
+        >
+          {saveStatus === "saving" ? "⏳ 저장중..." : saveStatus === "saved" ? "✓ 저장됨" : "💾 저장"}
+        </button>
       </div>
 
       {/* Modals */}

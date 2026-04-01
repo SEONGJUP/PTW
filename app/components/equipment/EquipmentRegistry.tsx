@@ -7,8 +7,9 @@ import {
   UsageLog,
   getEquipmentTypeLabel,
 } from "@/store/equipmentRegistryStore";
-import { CONSTRUCTION_EQUIPMENT_TYPES, EquipmentType, SavedCard } from "@/store/workPlanStore";
+import { SavedCard } from "@/store/workPlanStore";
 import { useWorkPlanStore } from "@/store/workPlanStore";
+import { EQUIPMENT_GROUPS } from "@/store/workPlanTaxonomy";
 
 const PRIMARY = "#00B7AF";
 const PRIMARY_DARK = "#00A099";
@@ -70,9 +71,7 @@ function extractEquipments(card: SavedCard): ExtractedEquip[] {
 
     result.push({
       equipmentType:  eqType ?? "other",
-      equipmentLabel: eqType && eqType in CONSTRUCTION_EQUIPMENT_TYPES
-        ? CONSTRUCTION_EQUIPMENT_TYPES[eqType as EquipmentType].label
-        : row.name,
+      equipmentLabel: eqType ? getEquipmentTypeLabel(eqType) : row.name,
       machineName,
       regNo,
       maker,
@@ -680,9 +679,10 @@ function calcDays(start: string, end: string): string {
 
 
 function EquipmentDetailModal({ record, onClose }: { record: EquipmentRecord; onClose: () => void }) {
-  const { updateRecord, addInspection, updateInspection, deleteInspection, addUsageLog, updateUsageLog, deleteUsageLog } = useEquipmentRegistryStore();
+  const { records, updateRecord, addInspection, updateInspection, deleteInspection, addUsageLog, updateUsageLog, deleteUsageLog } = useEquipmentRegistryStore();
   type Tab = "basic" | "spec" | "usage" | "history";
   const [tab, setTab] = useState<Tab>("basic");
+  const [showImportPrev, setShowImportPrev] = useState(false);
 
   // 투입이력 편집 상태
   const [usageDraftId, setUsageDraftId] = useState<string | null>(null);
@@ -733,10 +733,16 @@ function EquipmentDetailModal({ record, onClose }: { record: EquipmentRecord; on
     setInspDraftId(null);
   };
 
+  const otherRecords = records.filter((r) => r.id !== record.id);
+  const importFromPrev = (src: EquipmentRecord) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, seqNo: _seq, createdAt: _c, updatedAt: _u, inspectionHistory: _ih, usageLogs: _ul, ...fields } = src;
+    updateRecord(record.id, fields);
+    setShowImportPrev(false);
+  };
+
   const capacityLabel = CAPACITY_LABELS[record.equipmentType] ?? "정격용량";
-  const eqTypeLabel = record.equipmentType in CONSTRUCTION_EQUIPMENT_TYPES
-    ? CONSTRUCTION_EQUIPMENT_TYPES[record.equipmentType as EquipmentType].label
-    : "기타";
+  const eqTypeLabel = getEquipmentTypeLabel(record.equipmentType) || "기타";
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "basic",   label: "기본 정보" },
@@ -747,7 +753,42 @@ function EquipmentDetailModal({ record, onClose }: { record: EquipmentRecord; on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }}>
-      <div className="bg-white rounded-2xl shadow-2xl flex flex-col w-full max-w-2xl mx-4" style={{ maxHeight: "90vh" }}>
+      <div className="bg-white rounded-2xl shadow-2xl flex flex-col w-full max-w-2xl mx-4 relative" style={{ maxHeight: "90vh" }}>
+        {/* 이전카드에서 불러오기 패널 */}
+        {showImportPrev && (
+          <div className="absolute inset-0 z-20 flex items-start justify-center pt-16 rounded-2xl" style={{ background: "rgba(0,0,0,0.45)" }}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 flex flex-col" style={{ maxHeight: "65vh" }}>
+              <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e2e8f0" }}>
+                <div>
+                  <p className="font-semibold text-sm text-slate-800">이전 카드에서 불러오기</p>
+                  <p className="text-xs text-slate-400 mt-0.5">선택한 장비의 기본 정보·제원을 현재 카드로 복사합니다</p>
+                </div>
+                <button onClick={() => setShowImportPrev(false)} className="text-slate-400 hover:text-slate-600 text-lg ml-4">✕</button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-3 space-y-1.5">
+                {otherRecords.length === 0 ? (
+                  <p className="text-center text-slate-400 text-sm py-10">다른 장비 카드가 없습니다</p>
+                ) : (
+                  otherRecords.map((r) => (
+                    <button key={r.id} onClick={() => importFromPrev(r)}
+                      className="w-full text-left px-4 py-3 rounded-xl border transition-all hover:border-teal-400 hover:bg-teal-50"
+                      style={{ borderColor: "#e2e8f0" }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-400 font-medium w-5 text-center flex-shrink-0">{r.seqNo}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-700 truncate">{r.name || "이름없음"}</p>
+                          <p className="text-xs text-slate-400 truncate">{getEquipmentTypeLabel(r.equipmentType)}{r.model ? ` · ${r.model}` : ""}{r.registrationNumber ? ` · ${r.registrationNumber}` : ""}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "#e2e8f0" }}>
           <div>
@@ -759,6 +800,13 @@ function EquipmentDetailModal({ record, onClose }: { record: EquipmentRecord; on
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowImportPrev(true)}
+              className="text-xs px-3 py-1.5 rounded-xl font-medium border flex items-center gap-1.5 transition-all hover:bg-teal-50 flex-shrink-0"
+              style={{ borderColor: PRIMARY, color: PRIMARY }}
+            >
+              📋 이전카드에서 불러오기
+            </button>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
           </div>
         </div>
@@ -801,8 +849,8 @@ function EquipmentDetailModal({ record, onClose }: { record: EquipmentRecord; on
                       className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-teal-400"
                       style={{ borderColor: "#e2e8f0" }}
                     >
-                      {Object.entries(CONSTRUCTION_EQUIPMENT_TYPES).map(([k, v]) => (
-                        <option key={k} value={k}>{v.label}</option>
+                      {EQUIPMENT_GROUPS.map((g) => (
+                        <option key={g.id} value={g.id}>{g.label}</option>
                       ))}
                       <option value="other">기타</option>
                     </select>
@@ -989,7 +1037,7 @@ function EquipmentDetailModal({ record, onClose }: { record: EquipmentRecord; on
               {usageLogs.length === 0 && usageDraftId !== "new" && (
                 <div className="text-center py-10 text-slate-400 text-sm rounded-xl border border-dashed border-slate-200">
                   투입 이력이 없습니다<br />
-                  <span className="text-xs text-slate-300">직접 행 추가하거나, 목록에서 &ldquo;작업계획서에서 불러오기&rdquo;를 사용하세요</span>
+                  <span className="text-xs text-slate-300">+ 행 추가로 투입 이력을 기록하세요</span>
                 </div>
               )}
 
@@ -1111,15 +1159,84 @@ const EMPTY_CREATE: CreateForm = {
   notes: "",
 };
 
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="rounded px-0.5" style={{ background: "#fef08a", color: "#78350f" }}>
+        {text.slice(idx, idx + query.length)}
+      </mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
 function CreateEquipmentModal({ onClose, onCreated }: {
   onClose: () => void;
   onCreated: (id: string) => void;
 }) {
-  const { addRecord, addUsageLog, addInspection } = useEquipmentRegistryStore();
-  const [step, setStep] = useState<"type" | "form">("type");
+  const { addRecord, addUsageLog, addInspection, findByNumber } = useEquipmentRegistryStore();
+  const { savedCards } = useWorkPlanStore();
+
+  const [step, setStep] = useState<"type" | "form" | "import-plan" | "import-equip">("type");
   const [formTab, setFormTab] = useState<"basic" | "spec" | "usage" | "history">("basic");
   const [form, setForm] = useState<CreateForm>(EMPTY_CREATE);
   const [typeSearch, setTypeSearch] = useState("");
+  const [selectingKey, setSelectingKey] = useState<string | null>(null);
+
+  // 불러오기 상태
+  const [importCard, setImportCard] = useState<SavedCard | null>(null);
+  const [importSelectedIds, setImportSelectedIds] = useState<Set<number>>(new Set());
+  const [importActions, setImportActions] = useState<Record<number, "register" | "log">>({});
+
+  const importEquips = useMemo(
+    () => (importCard ? extractEquipments(importCard) : []),
+    [importCard]
+  );
+  const { records } = useEquipmentRegistryStore();
+  const importMatchMap = useMemo<(EquipmentRecord | undefined)[]>(
+    () => importEquips.map((e) => (e.regNo || e.machineName ? findByNumber(e.regNo, "") : undefined)),
+    [importEquips, importCard, records, findByNumber]
+  );
+
+  const handleImportConfirm = () => {
+    if (!importCard) return;
+    const card = importCard;
+    const formData = card.formData as Record<string, unknown>;
+    const overview = (formData["overview"] as Record<string, string>) ?? {};
+    for (const idx of importSelectedIds) {
+      const e = importEquips[idx];
+      const action = importActions[idx];
+      const existing = importMatchMap[idx];
+      const logPayload: Omit<UsageLog, "id" | "createdAt"> = {
+        source: "plan", workPlanId: card.id, workPlanTitle: card.title,
+        siteName: overview.siteName ?? "", location: overview.location ?? "",
+        startDate: overview.startDate ?? "", endDate: overview.endDate ?? "",
+        operator: e.operator, note: "",
+      };
+      if (action === "register" || (!action && !existing)) {
+        const newId = addRecord({
+          name: e.machineName || e.equipmentLabel, equipmentType: e.equipmentType,
+          model: e.model, manufacturer: e.maker, year: e.year,
+          serialNumber: "", registrationNumber: e.regNo,
+          capacity: e.capacity, weight: "", dimensions: "", enginePower: "",
+          workRadius: "", inspectionCycle: "", nextInspectionDate: "",
+          lastInspectionDate: "", insuranceStart: "", insuranceExpiry: "",
+          operatorName: e.operator, operatorLicense: "", purchaseDate: "",
+          workLocation: "", qty: e.qty ?? "", inspectionTarget: "N",
+          inspectionBasis: "", safetyDevice: "", accidentType: "",
+          notes: `작업계획서 [${card.title}]에서 등록`,
+        });
+        addUsageLog(newId, logPayload);
+      } else if (action === "log" && existing) {
+        addUsageLog(existing.id, logPayload);
+      }
+    }
+    onCreated("");
+  };
 
   // 투입이력 버퍼
   const [usageLogs, setUsageLogs] = useState<Omit<UsageLog, "id" | "createdAt">[]>([]);
@@ -1135,10 +1252,14 @@ function CreateEquipmentModal({ onClose, onCreated }: {
     setForm((p) => ({ ...p, [key]: val }));
 
   const handleSelectType = (typeKey: string) => {
-    const isPreset = typeKey in CONSTRUCTION_EQUIPMENT_TYPES || typeKey === "other";
-    setForm({ ...EMPTY_CREATE, equipmentType: isPreset ? typeKey : "other", name: isPreset ? "" : typeKey });
-    setFormTab("basic");
-    setStep("form");
+    setSelectingKey(typeKey);
+    setTimeout(() => {
+      const isPreset = EQUIPMENT_GROUPS.some((g) => g.id === typeKey) || typeKey === "other";
+      setForm({ ...EMPTY_CREATE, equipmentType: isPreset ? typeKey : "other", name: isPreset ? "" : typeKey });
+      setFormTab("basic");
+      setSelectingKey(null);
+      setStep("form");
+    }, 250);
   };
 
   const handleSave = () => {
@@ -1177,7 +1298,7 @@ function CreateEquipmentModal({ onClose, onCreated }: {
     onCreated(id);
   };
 
-  const typeEntries = Object.entries(CONSTRUCTION_EQUIPMENT_TYPES) as [EquipmentType, { label: string; icon: string }][];
+  const typeEntries = EQUIPMENT_GROUPS.map((g) => ({ key: g.id, label: g.label, icon: g.icon }));
 
   return (
     <div
@@ -1197,13 +1318,13 @@ function CreateEquipmentModal({ onClose, onCreated }: {
         >
           <div>
             <p className="text-sm font-bold" style={{ color: PRIMARY }}>
-              {step === "type" ? "🚜 장비·기계 등록" : "📝 장비·기계 등록"}
+              {step === "import-plan" ? "📋 작업계획서 선택"
+                : step === "import-equip" ? "🚜 장비 선택 및 등록"
+                : "🚜 장비·기계 등록"}
             </p>
             {step === "form" && (
               <p className="text-xs text-slate-500 mt-0.5">
-                {form.equipmentType in CONSTRUCTION_EQUIPMENT_TYPES
-                  ? CONSTRUCTION_EQUIPMENT_TYPES[form.equipmentType as EquipmentType].label
-                  : "기타 (직접입력)"}
+                {getEquipmentTypeLabel(form.equipmentType) || "기타 (직접입력)"}
               </p>
             )}
           </div>
@@ -1214,10 +1335,8 @@ function CreateEquipmentModal({ onClose, onCreated }: {
         </div>
 
         {/* Tabs (form step only) */}
-        {step === "form" && (() => {
-          const eqTypeLabel = form.equipmentType in CONSTRUCTION_EQUIPMENT_TYPES
-            ? CONSTRUCTION_EQUIPMENT_TYPES[form.equipmentType as EquipmentType].label
-            : "기타";
+        {step === "form" && !step.startsWith("import") && (() => {
+          const eqTypeLabel = getEquipmentTypeLabel(form.equipmentType) || "기타";
           const createTabs = [
             { id: "basic" as const,   label: "기본 정보" },
             { id: "spec" as const,    label: `제원 · ${eqTypeLabel}` },
@@ -1248,7 +1367,7 @@ function CreateEquipmentModal({ onClose, onCreated }: {
           {step === "type" && (() => {
             const q = typeSearch.trim().toLowerCase();
             const allTypes: { key: string; label: string; icon: string }[] = [
-              ...typeEntries.map(([key, { label, icon }]) => ({ key, label, icon })),
+              ...typeEntries,
               { key: "other", label: "기타 (직접입력)", icon: "📦" },
             ];
             const filtered = q
@@ -1256,31 +1375,184 @@ function CreateEquipmentModal({ onClose, onCreated }: {
               : allTypes;
             return (
               <div className="p-5 space-y-3">
-                <input
-                  autoFocus
-                  type="text"
-                  value={typeSearch}
-                  onChange={(e) => setTypeSearch(e.target.value)}
-                  placeholder="장비·기계 종류 검색 또는 직접 입력..."
-                  className="w-full px-3 py-2.5 border rounded-xl text-sm outline-none focus:border-teal-400"
-                  style={{ borderColor: "#e2e8f0" }}
-                />
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={typeSearch}
+                    onChange={(e) => setTypeSearch(e.target.value)}
+                    placeholder="장비·기계 종류 검색 또는 직접 입력..."
+                    className="flex-1 px-3 py-2 border rounded-xl text-sm outline-none focus:border-teal-400"
+                    style={{ borderColor: "#e2e8f0" }}
+                  />
+                </div>
                 <div className="space-y-1 max-h-72 overflow-y-auto">
-                  {filtered.map((t) => (
-                    <button
-                      key={t.key}
-                      onClick={() => handleSelectType(t.key)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-left transition-all hover:bg-teal-50"
-                      style={{ background: "white" }}
-                    >
-                      <span className="text-xl w-7 text-center flex-shrink-0">{t.icon}</span>
-                      <span className="text-sm font-medium text-slate-700">{t.label}</span>
-                    </button>
-                  ))}
+                  {/* 장비 종류 목록 */}
+                  {filtered.map((t) => {
+                    const isSelecting = selectingKey === t.key;
+                    return (
+                      <div
+                        key={t.key}
+                        className="flex items-center gap-2 rounded-xl px-4 py-2.5 transition-all duration-200"
+                        style={{
+                          background: isSelecting ? PRIMARY_LIGHT : "white",
+                          border: `1.5px solid ${isSelecting ? PRIMARY : "transparent"}`,
+                          transform: isSelecting ? "scale(1.01)" : "scale(1)",
+                        }}
+                      >
+                        <span className="text-xl w-7 text-center flex-shrink-0">{t.icon}</span>
+                        <span className="text-sm font-medium text-slate-700 flex-1">
+                          <HighlightText text={t.label} query={typeSearch.trim()} />
+                        </span>
+                        <button
+                          onClick={() => handleSelectType(t.key)}
+                          disabled={!!selectingKey}
+                          className="flex-shrink-0 text-xs px-3 py-1 rounded-lg font-medium transition-all"
+                          style={{
+                            background: isSelecting ? PRIMARY : PRIMARY_LIGHT,
+                            color: isSelecting ? "white" : PRIMARY,
+                          }}
+                        >
+                          {isSelecting ? "선택 중..." : "선택"}
+                        </button>
+                      </div>
+                    );
+                  })}
                   {filtered.length === 0 && (
                     <p className="text-xs text-slate-400 text-center py-6">일치하는 종류가 없습니다.<br />아래 &quot;등록하기&quot;로 직접 등록하세요.</p>
                   )}
+                  {/* 기등록 장비 검색 결과 */}
+                  {q && (() => {
+                    const matchedRecords = records.filter((r) =>
+                      r.name.toLowerCase().includes(q) ||
+                      r.registrationNumber.toLowerCase().includes(q) ||
+                      r.model.toLowerCase().includes(q) ||
+                      getEquipmentTypeLabel(r.equipmentType).toLowerCase().includes(q)
+                    );
+                    if (matchedRecords.length === 0) return null;
+                    return (
+                      <div className="mt-2">
+                        <div className="border-t mb-2" style={{ borderColor: "#e2e8f0" }} />
+                        <p className="text-xs font-semibold px-1 mb-1 text-slate-400">이미 등록된 장비 ({matchedRecords.length})</p>
+                        {matchedRecords.map((r) => {
+                          const isSelecting = selectingKey === r.id;
+                          return (
+                            <div key={r.id}
+                              className="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 mb-1"
+                              style={{
+                                background: isSelecting ? PRIMARY_LIGHT : "white",
+                                border: `1.5px solid ${isSelecting ? PRIMARY : "transparent"}`,
+                                transform: isSelecting ? "scale(1.01)" : "scale(1)",
+                              }}
+                            >
+                              <span className="text-xl w-7 text-center flex-shrink-0">🚜</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-slate-700 truncate">
+                                  <HighlightText text={r.name} query={typeSearch.trim()} />
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  <HighlightText text={getEquipmentTypeLabel(r.equipmentType)} query={typeSearch.trim()} />
+                                  {r.registrationNumber && ` · ${r.registrationNumber}`}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => { setSelectingKey(r.id); setTimeout(() => { setSelectingKey(null); onCreated(r.id); }, 250); }}
+                                disabled={!!selectingKey}
+                                className="flex-shrink-0 text-xs px-3 py-1 rounded-lg font-medium transition-all"
+                                style={{ background: isSelecting ? PRIMARY : PRIMARY_LIGHT, color: isSelecting ? "white" : PRIMARY }}
+                              >
+                                {isSelecting ? "선택 중..." : "선택"}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Import: 작업계획서 선택 ── */}
+          {step === "import-plan" && (
+            <div>
+              {savedCards.length === 0 ? (
+                <div className="py-16 text-center text-slate-400 text-sm">저장된 작업계획서가 없습니다</div>
+              ) : savedCards.map((card) => {
+                const ov = ((card.formData as Record<string, unknown>)["overview"] as Record<string, string>) ?? {};
+                const eqList = extractEquipments(card);
+                return (
+                  <button key={card.id} onClick={() => { setImportCard(card); setImportSelectedIds(new Set()); setImportActions({}); setStep("import-equip"); }}
+                    className="w-full flex items-center gap-4 px-5 py-4 text-left border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: PRIMARY_LIGHT }}>
+                      <span style={{ color: PRIMARY, fontSize: 18 }}>📄</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 truncate">{card.title}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {ov.siteName && `${ov.siteName} · `}{ov.startDate && `${ov.startDate}~${ov.endDate ?? ""} · `}장비 {eqList.length}종
+                      </p>
+                    </div>
+                    <span className="text-xs text-slate-300">선택 →</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Import: 장비 선택 ── */}
+          {step === "import-equip" && importCard && (() => {
+            const ov = ((importCard.formData as Record<string, unknown>)["overview"] as Record<string, string>) ?? {};
+            return (
+              <div className="p-4 space-y-1">
+                {importEquips.length === 0 ? (
+                  <div className="py-16 text-center text-slate-400 text-sm">이 작업계획서에 입력된 장비가 없습니다</div>
+                ) : (
+                  <>
+                    <p className="text-xs text-slate-400 pb-2">{importCard.title}{ov.siteName && ` · ${ov.siteName}`} · 복수 선택 가능</p>
+                    {importEquips.map((e, idx) => {
+                      const existing = importMatchMap[idx];
+                      const checked = importSelectedIds.has(idx);
+                      const action = importActions[idx];
+                      return (
+                        <div key={idx}
+                          className="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-150 cursor-pointer"
+                          style={{
+                            background: checked ? PRIMARY_LIGHT : "white",
+                            border: `1.5px solid ${checked ? PRIMARY : "transparent"}`,
+                          }}
+                          onClick={() => setImportSelectedIds((p) => { const n = new Set(p); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })}>
+                          <input type="checkbox" checked={checked} readOnly className="accent-teal-500 flex-shrink-0" />
+                          <span className="text-xl w-7 text-center flex-shrink-0">🚜</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-700 truncate">{e.machineName || e.equipmentLabel || "(이름없음)"}</p>
+                            <p className="text-xs text-slate-400">
+                              {[e.model, e.capacity, e.regNo].filter(Boolean).join(" · ")}
+                              {existing && <span style={{ color: PRIMARY }}> · 등록됨</span>}
+                            </p>
+                          </div>
+                          {checked && (
+                            <div className="flex gap-1 flex-shrink-0" onClick={(ev) => ev.stopPropagation()}>
+                              {(["register", "log"] as const).map((a) => (
+                                <button key={a}
+                                  onClick={() => setImportActions((p) => ({ ...p, [idx]: a }))}
+                                  className="text-xs px-2.5 py-1 rounded-lg font-medium transition-all"
+                                  style={{
+                                    background: action === a ? PRIMARY : "white",
+                                    color: action === a ? "white" : "#64748b",
+                                    border: `1px solid ${action === a ? PRIMARY : "#e2e8f0"}`,
+                                  }}>
+                                  {a === "register" ? "신규 등록" : "이력 추가"}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             );
           })()}
@@ -1601,9 +1873,13 @@ function CreateEquipmentModal({ onClose, onCreated }: {
 
         {/* Footer */}
         <div className="px-5 py-3 border-t bg-white flex items-center gap-2 flex-shrink-0" style={{ borderColor: "#e2e8f0" }}>
-          {step === "form" && (
+          {(step === "form" || step === "import-plan" || step === "import-equip") && (
             <button
-              onClick={() => { setStep("type"); setTypeSearch(""); }}
+              onClick={() => {
+                if (step === "form") { setStep("type"); setTypeSearch(""); }
+                else if (step === "import-equip") { setStep("import-plan"); setImportCard(null); }
+                else { setStep("type"); }
+              }}
               className="text-xs px-3 py-1.5 rounded-lg border text-slate-500 font-medium"
               style={{ borderColor: "#e2e8f0" }}
             >← 뒤로</button>
@@ -1612,11 +1888,8 @@ function CreateEquipmentModal({ onClose, onCreated }: {
           <button onClick={onClose} className="text-xs px-3 py-1.5 rounded-xl text-slate-500 bg-slate-100 font-medium">취소</button>
           {step === "type" && (() => {
             const q = typeSearch.trim();
-            const allTypes = [
-              ...typeEntries.map(([key, { label }]) => label),
-              "기타 (직접입력)",
-            ];
-            const isDirect = q && !allTypes.some((l) => l.toLowerCase() === q.toLowerCase());
+            const allTypeLabels = [...typeEntries.map((t) => t.label), "기타 (직접입력)"];
+            const isDirect = q && !allTypeLabels.some((l) => l.toLowerCase() === q.toLowerCase());
             return isDirect ? (
               <button
                 onClick={() => handleSelectType(q)}
@@ -1637,6 +1910,16 @@ function CreateEquipmentModal({ onClose, onCreated }: {
               등록 완료
             </button>
           )}
+          {step === "import-equip" && (
+            <button
+              onClick={handleImportConfirm}
+              disabled={importSelectedIds.size === 0}
+              className="text-xs px-4 py-1.5 rounded-xl font-semibold text-white transition-all"
+              style={{ background: importSelectedIds.size > 0 ? PRIMARY : "#cbd5e1" }}
+            >
+              등록 / 이력 추가 ({importSelectedIds.size})
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -1647,22 +1930,41 @@ function CreateEquipmentModal({ onClose, onCreated }: {
 export default function EquipmentRegistry() {
   const { records, deleteRecord } = useEquipmentRegistryStore();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [showImport, setShowImport] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const activeRecord = activeId ? records.find((r) => r.id === activeId) : null;
 
-  const filtered = records.filter((r) => {
-    const q = search.toLowerCase();
-    return !q ||
-      r.name.toLowerCase().includes(q) ||
-      r.model.toLowerCase().includes(q) ||
-      r.registrationNumber.toLowerCase().includes(q) ||
-      r.serialNumber.toLowerCase().includes(q) ||
-      r.operatorName.toLowerCase().includes(q) ||
-      getEquipmentTypeLabel(r.equipmentType).toLowerCase().includes(q);
-  });
+  const filtered = records
+    .filter((r) => {
+      const q = search.toLowerCase();
+      return !q ||
+        r.name.toLowerCase().includes(q) ||
+        r.model.toLowerCase().includes(q) ||
+        r.registrationNumber.toLowerCase().includes(q) ||
+        r.serialNumber.toLowerCase().includes(q) ||
+        r.operatorName.toLowerCase().includes(q) ||
+        getEquipmentTypeLabel(r.equipmentType).toLowerCase().includes(q);
+    })
+    .sort((a, b) => (b.seqNo ?? 0) - (a.seqNo ?? 0));
+
+  // 투입이력별 행 확장: 각 UsageLog가 별도 행으로 노출
+  type TableRow = { record: EquipmentRecord; log: UsageLog | null; isFirst: boolean; rowspan: number };
+  const tableRows = useMemo<TableRow[]>(() => {
+    const rows: TableRow[] = [];
+    for (const record of filtered) {
+      const logs = record.usageLogs ?? [];
+      if (logs.length === 0) {
+        rows.push({ record, log: null, isFirst: true, rowspan: 1 });
+      } else {
+        logs.forEach((log, idx) => {
+          rows.push({ record, log, isFirst: idx === 0, rowspan: logs.length });
+        });
+      }
+    }
+    return rows;
+  }, [filtered]);
 
   const dueCount = records.filter(
     (r) => r.nextInspectionDate && new Date(r.nextInspectionDate) <= new Date()
@@ -1684,22 +1986,13 @@ export default function EquipmentRegistry() {
               )}
             </p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowImport(true)}
-              className="text-xs px-4 py-2 rounded-xl font-medium border transition-colors flex items-center gap-1.5"
-              style={{ borderColor: PRIMARY, color: PRIMARY, background: PRIMARY_LIGHT }}
-            >
-              📋 작업계획서에서 불러오기
-            </button>
-            <button
-              onClick={handleCreate}
-              className="text-sm px-4 py-2 rounded-xl font-medium text-white transition-colors"
-              style={{ background: PRIMARY }}
-            >
-              + 장비·기계 등록
-            </button>
-          </div>
+          <button
+            onClick={handleCreate}
+            className="text-sm px-4 py-2 rounded-xl font-medium text-white transition-colors"
+            style={{ background: PRIMARY }}
+          >
+            + 장비·기계 등록
+          </button>
         </div>
 
         {/* 검색 */}
@@ -1723,18 +2016,11 @@ export default function EquipmentRegistry() {
             <p className="text-xs text-slate-300 mb-4">작업계획서에서 불러오거나 직접 등록하세요</p>
             <div className="flex justify-center gap-2">
               <button
-                onClick={() => setShowImport(true)}
-                className="text-xs px-4 py-2 rounded-xl font-medium border"
-                style={{ borderColor: PRIMARY, color: PRIMARY, background: PRIMARY_LIGHT }}
-              >
-                📋 작업계획서에서 불러오기
-              </button>
-              <button
                 onClick={handleCreate}
                 className="text-xs px-4 py-2 rounded-xl text-white font-medium"
                 style={{ background: PRIMARY }}
               >
-                직접 등록
+                + 장비·기계 등록
               </button>
             </div>
           </div>
@@ -1743,6 +2029,16 @@ export default function EquipmentRegistry() {
           <table className="w-full text-xs" style={{ borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
+                <th className="px-4 py-2.5 w-8">
+                  <input
+                    type="checkbox"
+                    className="accent-teal-500"
+                    checked={filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id))}
+                    onChange={(e) => {
+                      setSelectedIds(e.target.checked ? new Set(filtered.map((r) => r.id)) : new Set());
+                    }}
+                  />
+                </th>
                 {[
                   "순번", "기계·설비명", "관리번호", "용량", "작업장소",
                   "수량", "검사대상", "방호장치", "담당자명", "투입기간", ""
@@ -1754,52 +2050,48 @@ export default function EquipmentRegistry() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((record, idx) => {
+              {tableRows.map(({ record, log }, i) => {
                 const dash = <span className="text-slate-300">-</span>;
+                const isChecked = selectedIds.has(record.id);
                 return (
                   <tr
-                    key={record.id}
+                    key={`${record.id}-${log?.id ?? "noLog"}-${i}`}
                     className="border-b cursor-pointer hover:bg-slate-50 transition-colors"
-                    style={{ borderColor: "#f1f5f9" }}
+                    style={{ borderColor: "#f1f5f9", background: isChecked ? "#f0fffe" : undefined }}
                     onClick={() => setActiveId(record.id)}
                   >
-                    <td className="px-4 py-3 text-slate-400 text-center">{filtered.length - idx}</td>
+                    <td className="px-4 py-3 w-8" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="accent-teal-500"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            e.target.checked ? next.add(record.id) : next.delete(record.id);
+                            return next;
+                          });
+                        }}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 text-center">{record.seqNo ?? ""}</td>
                     <td className="px-4 py-3">
                       <span className="font-semibold text-slate-800">{record.name || "(이름 없음)"}</span>
                       {record.model && <span className="text-slate-400 ml-1.5">{record.model}</span>}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
-                      {record.registrationNumber || dash}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {record.capacity || dash}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {record.workLocation || dash}
-                    </td>
-                    <td className="px-4 py-3 text-center text-slate-600">
-                      {record.qty || dash}
-                    </td>
+                    <td className="px-4 py-3 text-slate-700">{record.registrationNumber || dash}</td>
+                    <td className="px-4 py-3 text-slate-600">{record.capacity || dash}</td>
+                    <td className="px-4 py-3 text-slate-600">{(log?.location || record.workLocation) || dash}</td>
+                    <td className="px-4 py-3 text-center text-slate-600">{record.qty || dash}</td>
                     <td className="px-4 py-3 text-center">
-                      {record.inspectionTarget
-                        ? <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: "#d1fae5", color: "#065f46" }}>{record.inspectionTarget}</span>
+                      {record.inspectionTarget === "Y"
+                        ? <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: "#d1fae5", color: "#065f46" }}>검사대상</span>
                         : dash}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {record.safetyDevice || dash}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {record.operatorName || dash}
-                    </td>
+                    <td className="px-4 py-3 text-slate-600">{record.safetyDevice || dash}</td>
+                    <td className="px-4 py-3 text-slate-600">{(log?.operator || record.operatorName) || dash}</td>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
-                      {(() => {
-                        const logs = record.usageLogs ?? [];
-                        const last = logs[0];
-                        if (!last) return dash;
-                        const start = last.startDate || "?";
-                        const end = last.endDate || "?";
-                        return <span>{start} ~ {end}</span>;
-                      })()}
+                      {log ? <span>{log.startDate || "?"} ~ {log.endDate || "?"}</span> : dash}
                     </td>
                     <td className="px-4 py-3">
                       <button
@@ -1823,7 +2115,6 @@ export default function EquipmentRegistry() {
       </div>
 
       {/* 모달들 */}
-      {showImport && <ImportFromPlanModal onClose={() => setShowImport(false)} />}
       {showCreate && (
         <CreateEquipmentModal
           onClose={() => setShowCreate(false)}

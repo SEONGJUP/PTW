@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { EquipmentType, CONSTRUCTION_EQUIPMENT_TYPES } from "./workPlanStore";
+import { EQUIPMENT_GROUPS } from "./workPlanTaxonomy";
 
 
 export interface InspectionRecord {
@@ -30,6 +31,7 @@ export interface UsageLog {
 
 export interface EquipmentRecord {
   id: string;
+  seqNo: number;
 
   // 기본 정보
   name: string;
@@ -76,7 +78,7 @@ export interface EquipmentRecord {
 export interface EquipmentRegistryStore {
   records: EquipmentRecord[];
 
-  addRecord:        (data: Omit<EquipmentRecord, "id" | "createdAt" | "updatedAt" | "inspectionHistory" | "usageLogs">) => string;
+  addRecord:        (data: Omit<EquipmentRecord, "id" | "seqNo" | "createdAt" | "updatedAt" | "inspectionHistory" | "usageLogs">) => string;
   updateRecord:     (id: string, data: Partial<EquipmentRecord>) => void;
   deleteRecord:     (id: string) => void;
 
@@ -96,6 +98,8 @@ export function getEquipmentTypeLabel(type: EquipmentType | string): string {
   if (type in CONSTRUCTION_EQUIPMENT_TYPES) {
     return CONSTRUCTION_EQUIPMENT_TYPES[type as EquipmentType].label;
   }
+  const grp = EQUIPMENT_GROUPS.find((g) => g.id === type);
+  if (grp) return grp.label;
   return type;
 }
 
@@ -107,9 +111,10 @@ export const useEquipmentRegistryStore = create<EquipmentRegistryStore>()(
       addRecord: (data) => {
         const id = `eq_${Date.now()}`;
         const now = new Date().toISOString();
-        set((s) => ({
-          records: [...s.records, { ...data, id, inspectionHistory: [], usageLogs: [], createdAt: now, updatedAt: now }],
-        }));
+        set((s) => {
+          const seqNo = s.records.length > 0 ? Math.max(...s.records.map((r) => r.seqNo ?? 0)) + 1 : 1;
+          return { records: [...s.records, { ...data, id, seqNo, inspectionHistory: [], usageLogs: [], createdAt: now, updatedAt: now }] };
+        });
         return id;
       },
 
