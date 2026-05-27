@@ -7,11 +7,7 @@ const mainNav = [
   {
     group: "작업 관리",
     items: [
-      { href: "/safety-board", label: "안전카드 게시판", icon: "🛡" },
-      { href: "/approval", label: "작업계획·허가서 승인", icon: "✅" },
-      { href: "/work-plan/equipment", label: "장비·기계 관리", icon: "🚜" },
-      { href: "/work-plan/settings", label: "작업계획서 상세설정", icon: "⚙" },
-      { href: "/work-plan/permit-settings", label: "작업허가서 상세설정", icon: "🔑" },
+      { href: "/work-plan/safety-card-write", label: "통합 작업계획서 작성", icon: "📄" },
     ],
   },
   {
@@ -20,6 +16,14 @@ const mainNav = [
       { href: "/developer", label: "개발자 참고사항", icon: "💻" },
     ],
   },
+];
+
+const legacyNav = [
+  { href: "/safety-board", label: "안전카드 게시판", icon: "🛡" },
+  { href: "/approval", label: "작업계획·허가서 승인", icon: "✅" },
+  { href: "/work-plan/equipment", label: "장비·기계 관리", icon: "🚜" },
+  { href: "/work-plan/settings", label: "작업계획서 상세설정", icon: "⚙" },
+  { href: "/work-plan/permit-settings", label: "작업허가서 상세설정", icon: "🔑" },
 ];
 
 const etcNav = [
@@ -40,6 +44,7 @@ const etcNav = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [etcOpen, setEtcOpen] = useState(false);
+  const [legacyOpen, setLegacyOpen] = useState(false);
 
   return (
     <aside className="w-60 h-screen bg-slate-900 flex flex-col overflow-y-auto flex-shrink-0">
@@ -109,6 +114,43 @@ export default function Sidebar() {
                     key={item.href}
                     href={item.href}
                     className={`sidebar-link ${isActive ? "active" : ""}`}
+                  >
+                    <span className="w-5 text-center text-base">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 이전 ver (collapsible) */}
+        <div>
+          <button
+            onClick={() => setLegacyOpen((v) => !v)}
+            className="w-full flex items-center justify-between text-slate-600 text-xs font-semibold uppercase tracking-wider px-3 mb-2 hover:text-slate-400 transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="text-slate-600">🕘</span>
+              이전 ver
+            </span>
+            <span
+              className="transition-transform"
+              style={{ transform: legacyOpen ? "rotate(180deg)" : "rotate(0deg)", display: "inline-block" }}
+            >
+              ▾
+            </span>
+          </button>
+
+          {legacyOpen && (
+            <div className="space-y-0.5">
+              {legacyNav.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`sidebar-link text-slate-600 ${isActive ? "active" : ""}`}
                   >
                     <span className="w-5 text-center text-base">{item.icon}</span>
                     <span>{item.label}</span>
