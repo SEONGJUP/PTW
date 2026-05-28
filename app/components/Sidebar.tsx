@@ -14,6 +14,7 @@ const mainNav = [
     group: "참고",
     items: [
       { href: "/developer", label: "개발자 참고사항", icon: "💻" },
+      { href: "/developer/legal-schema", label: "법정 계획서 스키마", icon: "🗂" },
     ],
   },
 ];

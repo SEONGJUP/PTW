@@ -91,7 +91,39 @@ const CSS_CLASSES = [
   { cls: "ptw-section-card-body",   desc: "섹션 본문 (p-4 padding)" },
 ];
 
-type TabId = "overview" | "schema" | "checklist" | "specifics" | "equipment-gas" | "taxonomy" | "ui-guide" | "changelog";
+// 통합 작업계획서 탭용 상수
+const CARD_OVERVIEW_FIELDS = [
+  { field: "siteName",          type: "string",                desc: "사업장명 (SafeBuddy 연동, 읽기전용)" },
+  { field: "docName",           type: "string",                desc: "문서명 (비워두면 날짜+작업명으로 자동생성)" },
+  { field: "workName",          type: "string",                desc: "작업명 (법정 유형의 shortLabel이 기본값)" },
+  { field: "createdDate",       type: "string (YYYY-MM-DD)",   desc: "작성일" },
+  { field: "companyName",       type: "string",                desc: "업체명" },
+  { field: "author",            type: "string",                desc: "작성자 이름" },
+  { field: "authorSignature",   type: "string? (dataUrl)",     desc: "작성자 서명 이미지" },
+  { field: "showReviewer",      type: "boolean?",              desc: "검토자 표시 여부 (토글)" },
+  { field: "reviewer",          type: "string?",               desc: "검토자 이름" },
+  { field: "reviewerSignature", type: "string? (dataUrl)",     desc: "검토자 서명 이미지" },
+  { field: "location",          type: "string",                desc: "작업장소" },
+  { field: "startDate",         type: "string (YYYY-MM-DD)",   desc: "작업시작일" },
+  { field: "endDate",           type: "string (YYYY-MM-DD)",   desc: "작업종료일" },
+  { field: "description",       type: "string",                desc: "작업개요 (textarea)" },
+];
+
+const SAFETY_CARD_SECTIONS = [
+  { id: "overview",        label: "작업 개요",                desc: "사업장명·문서명·작업명·업체명·작업장소·기간·서명",              conditional: "" },
+  { id: "personnel",       label: "작업인원 배치",            desc: "역할별 인원수 + 상세 배치표 (이름·연락처·면허·신호방법)",        conditional: "" },
+  { id: "equipment",       label: "사용 장비",                desc: "건설기계 9종 + 기계제원(상세규격 포함) + 장비별 작업조건",      conditional: "" },
+  { id: "preSurvey",       label: "사전조사",                 desc: "법정 유형별 사전조사 항목 (preSurveyFields)",                 conditional: "preSurveyFields.length > 0 인 유형만" },
+  { id: "plan",            label: "작업계획서 내용",          desc: "법정 유형별 planFields (체크박스·텍스트·textarea)",            conditional: "" },
+  { id: "drawings",        label: "운행경로 및 작업계획 도면", desc: "캔버스 주석 편집 + 도면 이미지 첨부",                        conditional: "" },
+  { id: "riskAssessment",  label: "위험성평가",               desc: "위험요인·발생형태·가능성·심각성·위험도·대책",                conditional: "" },
+  { id: "safetyChecklist", label: "안전점검",                 desc: "항목별 양호/불량/해당없음 체크",                              conditional: "" },
+  { id: "training",        label: "안전교육",                 desc: "교육일·교육자·내용·수강자",                                  conditional: "" },
+  { id: "emergency",       label: "비상연락망",               desc: "역할별 담당자·연락처",                                        conditional: "" },
+  { id: "otherFiles",      label: "기타 첨부파일",            desc: "일반 첨부 + 장비별 서류첨부 (등록증·보험증·면허 등)",          conditional: "" },
+];
+
+type TabId = "overview" | "schema" | "checklist" | "specifics" | "equipment-gas" | "taxonomy" | "ui-guide" | "changelog" | "safety-card";
 
 export default function DeveloperPage() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
@@ -175,6 +207,7 @@ export default function DeveloperPage() {
     { id: "taxonomy",      label: "작업분류 체계",    icon: "🗂" },
     { id: "ui-guide",      label: "UI 가이드",        icon: "🎨" },
     { id: "changelog",     label: "개선 이력",        icon: "📜" },
+    { id: "safety-card",   label: "통합 작업계획서",  icon: "📄" },
   ];
 
   return (
@@ -245,7 +278,12 @@ export default function DeveloperPage() {
                   { file: "app/work-plan/permit-settings/page.tsx",      desc: "허가서 상세 설정 (체크리스트/확인사항 커스텀)" },
                   { file: "app/safety-board/page.tsx",                   desc: "안전카드 게시판 (허가서 현황 모니터링)" },
                   { file: "app/approval/page.tsx",                       desc: "결재 페이지" },
-                  { file: "app/developer/page.tsx",                      desc: "개발자 참고사항 (현재 페이지)" },
+                  { file: "app/developer/page.tsx",                             desc: "개발자 참고사항 (현재 페이지)" },
+                  { file: "app/developer/legal-schema/page.tsx",               desc: "법정 작업계획서 스키마 뷰어 (13종 데이터 수집항목)" },
+                  { file: "app/work-plan/safety-card-write/page.tsx",          desc: "통합 작업계획서 작성 페이지 (라우트)" },
+                  { file: "components/safety-card-write/SafetyCardWritePage.tsx", desc: "통합 작업계획서 메인 컴포넌트 (전체 섹션)" },
+                  { file: "components/safety-card-write/EquipExtraForms.tsx",  desc: "장비별 작업조건 및 사전점검표 폼 (9종)" },
+                  { file: "config/safetyCard/legalCardTypeDefs.ts",            desc: "13종 법정 작업계획서 유형 정의 (필드·법적근거)" },
                 ].map(({ file, desc }) => (
                   <div key={file} className="flex items-start gap-3 px-4 py-2.5">
                     <code className="text-teal-700 font-mono flex-shrink-0 w-80">{file}</code>
@@ -705,6 +743,109 @@ export default function DeveloperPage() {
           </div>
         )}
 
+        {/* ══ 통합 작업계획서 ══ */}
+        {activeTab === "safety-card" && (
+          <div className="max-w-4xl space-y-5">
+
+            {/* CardOverview 필드 */}
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="px-4 py-3 border-b bg-slate-50">
+                <p className="text-sm font-bold text-slate-700">CardOverview 인터페이스 ({CARD_OVERVIEW_FIELDS.length}개 필드)</p>
+                <p className="text-xs text-slate-400 mt-0.5">components/safety-card-write/SafetyCardWritePage.tsx — CardOverview</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ background: PRIMARY_LIGHT }}>
+                      {["필드명", "타입", "설명"].map(h => (
+                        <th key={h} className="px-4 py-2.5 text-left font-semibold" style={{ color: PRIMARY }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {CARD_OVERVIEW_FIELDS.map(f => (
+                      <tr key={f.field} className="hover:bg-slate-50">
+                        <td className="px-4 py-2 font-mono text-teal-700">{f.field}</td>
+                        <td className="px-4 py-2 font-mono text-purple-600">{f.type}</td>
+                        <td className="px-4 py-2 text-slate-600">{f.desc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 섹션 구성 */}
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="px-4 py-3 border-b bg-slate-50">
+                <p className="text-sm font-bold text-slate-700">섹션 아키텍쳐 ({SAFETY_CARD_SECTIONS.length}개 섹션)</p>
+                <p className="text-xs text-slate-400 mt-0.5">localStorage key: ptw_legal_cards_v1 · CardDoc.sections</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ background: PRIMARY_LIGHT }}>
+                      {["섹션 ID", "섹션명", "데이터 수집 내용", "표시 조건"].map(h => (
+                        <th key={h} className="px-4 py-2.5 text-left font-semibold" style={{ color: PRIMARY }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {SAFETY_CARD_SECTIONS.map(s => (
+                      <tr key={s.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-2 font-mono text-teal-700">{s.id}</td>
+                        <td className="px-4 py-2 font-semibold text-slate-700">{s.label}</td>
+                        <td className="px-4 py-2 text-slate-500">{s.desc}</td>
+                        <td className="px-4 py-2 text-slate-400 text-[10px]">
+                          {s.conditional || <span className="text-slate-300">항상</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 주요 인터페이스 요약 */}
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="px-4 py-3 border-b bg-slate-50">
+                <p className="text-sm font-bold text-slate-700">주요 인터페이스 요약</p>
+              </div>
+              <div className="divide-y divide-slate-100 text-xs">
+                {[
+                  { name: "CardDoc",          desc: "localStorage 저장 단위. id·typeId·overview·personnel·equipment·plan·sections·createdAt·updatedAt" },
+                  { name: "MachineRow",        desc: "기계제원 1행. machineName·maker·regNo·year·capacity·dimensions·workRadius·inspectionExpiry·insuranceEnd·detailSpecs[]" },
+                  { name: "DetailSpec",        desc: "상세규격 블록. title + rows[]{key, value}" },
+                  { name: "EquipmentData",     desc: "selectedKeys(9종 선택) + rows(장비행) + machineSpecs{equipKey→MachineRow[]} + extraData{equipKey→ExtraData}" },
+                  { name: "ExtraData",         desc: "장비별 작업조건·사전점검표 데이터 (EquipExtraForms.tsx). 섹션별 Record<string,unknown>" },
+                  { name: "OtherFilesData",    desc: "files(일반첨부) + equipFiles{equipKey→EquipDocFile[]} (건설기계등록증 등 장비별 서류)" },
+                  { name: "SignatureModal",    desc: "3가지 서명 모드: draw(캔버스 직접서명) / load(직원명단 불러오기) / request(서명요청)" },
+                ].map(({ name, desc }) => (
+                  <div key={name} className="flex items-start gap-3 px-4 py-2.5">
+                    <code className="text-teal-700 font-mono flex-shrink-0 w-40">{name}</code>
+                    <span className="text-slate-500">{desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 법정 작업계획서 스키마 링크 */}
+            <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 flex items-center gap-3">
+              <span className="text-lg">🗂</span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-teal-800">법정 작업계획서 데이터 수집항목 전체 보기</p>
+                <p className="text-xs text-teal-600 mt-0.5">13종 법정 유형별 사전조사·작업계획 필드 상세 + 텍스트/JSON 복사</p>
+              </div>
+              <a href="/developer/legal-schema"
+                className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white transition-colors"
+                style={{ background: PRIMARY }}>
+                열기 →
+              </a>
+            </div>
+
+          </div>
+        )}
+
         {/* ══ 개선 이력 ══ */}
         {activeTab === "changelog" && (
           <div className="max-w-3xl space-y-4">
@@ -713,6 +854,22 @@ export default function DeveloperPage() {
             </div>
 
             {([
+              {
+                date: "2026-05-28",
+                category: "신규 기능",
+                title: "통합 작업계획서 작성 페이지 (SafetyCardWritePage) 구현",
+                law: "산업안전보건기준에 관한 규칙 제38조 13종 법정 작업계획서",
+                items: [
+                  "SafetyCardWritePage: 11개 섹션 통합 편집 (개요·인원·장비·사전조사·계획·도면·위험성평가·안전점검·교육·비상연락·첨부파일)",
+                  "CardOverview: 업체명·작업장소·작성자·검토자 서명 카드 (draw/load/request 3가지 서명 모드)",
+                  "EquipExtraForms: 건설기계 9종별 작업조건·사전점검표 폼 (TruckExtraForms 등)",
+                  "OtherFilesSection: 장비별 서류첨부 (건설기계등록증·보험증·면허·검사증 등 유형별 체크리스트)",
+                  "DrawingsSection: HTML5 Canvas 주석 편집 + 도면 이미지 첨부",
+                  "법정 작업계획서 스키마 뷰어 (/developer/legal-schema): 13종 사전조사+계획항목 텍스트/JSON 복사",
+                  "localStorage ptw_legal_cards_v1로 자동 저장·다중 문서 관리",
+                ],
+                file: "components/safety-card-write/SafetyCardWritePage.tsx, EquipExtraForms.tsx, config/safetyCard/legalCardTypeDefs.ts",
+              },
               {
                 date: "2026-04-01",
                 category: "법적 준수",
