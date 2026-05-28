@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LEGAL_CARD_TYPES, type LegalCardTypeDef } from "@/config/safetyCard/legalCardTypeDefs";
+import { LEGAL_CARD_TYPES } from "@/config/safetyCard/legalCardTypeDefs";
 import { EQUIP_EXTRA_FORMS, type ExtraData } from "./EquipExtraForms";
 
 // ── Storage ───────────────────────────────────────────────────────────────────
@@ -120,9 +120,24 @@ interface OtherFilesData { files: OtherFile[]; equipFiles: Record<string, EquipD
 
 // ── CardDoc ───────────────────────────────────────────────────────────────────
 
+interface TypeFile { id: string; name: string; mimeType: string; dataUrl?: string }
+
+interface TypeSectionData {
+  preSurvey: Record<string, string>;
+  plan: Record<string, string>;
+  checkboxItems: Record<string, Record<string, boolean>>;
+  checkboxNotes: Record<string, Record<string, string>>;
+  files: TypeFile[];
+}
+
+function emptyTypeSection(): TypeSectionData {
+  return { preSurvey: {}, plan: {}, checkboxItems: {}, checkboxNotes: {}, files: [] };
+}
+
 interface CardDoc {
   id: string;
-  typeId: string;
+  selectedTypeIds: string[];
+  customTypes: string[];
   status: "draft" | "completed";
   createdAt: string;
   updatedAt: string;
@@ -135,10 +150,7 @@ interface CardDoc {
   emergency: EmergencyData;
   drawings: DrawingsData;
   otherFiles: OtherFilesData;
-  preSurvey: Record<string, string>;
-  plan: Record<string, string>;
-  checkboxItems: Record<string, Record<string, boolean>>;
-  checkboxNotes: Record<string, Record<string, string>>;
+  typeSections: Record<string, TypeSectionData>;
 }
 
 function emptyOverview(): CardOverview {
@@ -158,20 +170,55 @@ function emptyEmergency(): EmergencyData { return { hospital: "", fire: "", poli
 function emptyDrawings(): DrawingsData { return { files: [] }; }
 function emptyOtherFiles(): OtherFilesData { return { files: [], equipFiles: {} }; }
 
-function newDoc(typeId: string): CardDoc {
+function newDoc(): CardDoc {
   const now = new Date().toISOString();
   return {
-    id: `card-${Date.now()}`, typeId, status: "draft", createdAt: now, updatedAt: now,
+    id: `card-${Date.now()}`, selectedTypeIds: [], customTypes: [],
+    status: "draft", createdAt: now, updatedAt: now,
     overview: emptyOverview(), personnel: emptyPersonnel(), equipment: emptyEquipment(),
     riskAssessment: emptyRisk(), safetyChecklist: emptySafetyChecklist(),
     training: emptyTraining(), emergency: emptyEmergency(),
     drawings: emptyDrawings(), otherFiles: emptyOtherFiles(),
-    preSurvey: {}, plan: {}, checkboxItems: {}, checkboxNotes: {},
+    typeSections: {},
   };
 }
 
+type LegacyDoc = CardDoc & {
+  typeId?: string;
+  preSurvey?: Record<string, string>;
+  plan?: Record<string, string>;
+  checkboxItems?: Record<string, Record<string, boolean>>;
+  checkboxNotes?: Record<string, Record<string, string>>;
+};
+
 function loadAll(): CardDoc[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]"); } catch { return []; }
+  try {
+    const raw: LegacyDoc[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+    return raw.map((d) => {
+      if (!d.selectedTypeIds && d.typeId) {
+        return {
+          ...d,
+          selectedTypeIds: [d.typeId],
+          customTypes: [],
+          typeSections: {
+            [d.typeId]: {
+              preSurvey: d.preSurvey ?? {},
+              plan: d.plan ?? {},
+              checkboxItems: d.checkboxItems ?? {},
+              checkboxNotes: d.checkboxNotes ?? {},
+              files: [],
+            },
+          },
+        };
+      }
+      return {
+        ...d,
+        selectedTypeIds: d.selectedTypeIds ?? [],
+        customTypes: d.customTypes ?? [],
+        typeSections: d.typeSections ?? {},
+      };
+    });
+  } catch { return []; }
 }
 
 function saveAll(docs: CardDoc[]) {
@@ -1522,7 +1569,10 @@ function SafetyCardImportModal({
             </div>
           ) : (
             candidates.map((d) => {
-              const typeDef = LEGAL_CARD_TYPES.find((t) => t.id === d.typeId);
+              const firstTypeDef = LEGAL_CARD_TYPES.find((t) => t.id === (d.selectedTypeIds?.[0]));
+              const typeLabel = d.selectedTypeIds?.length
+                ? d.selectedTypeIds.map((id) => LEGAL_CARD_TYPES.find((t) => t.id === id)?.shortLabel ?? id).join(", ")
+                : "유형 없음";
               const rowCount =
                 section === "riskAssessment" ? d.riskAssessment?.rows?.length ?? 0
                 : section === "training" ? d.training?.rows?.length ?? 0
@@ -1534,10 +1584,10 @@ function SafetyCardImportModal({
                   onClick={() => { onImport(d); onClose(); }}
                   className="w-full text-left px-5 py-3 hover:bg-teal-50 transition-colors flex items-center gap-3"
                 >
-                  <span className="text-xl">{typeDef?.icon ?? "📄"}</span>
+                  <span className="text-xl">{firstTypeDef?.icon ?? "📄"}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{typeDef?.shortLabel ?? d.typeId}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{d.overview?.workName || d.overview?.siteName || "제목 없음"} · {new Date(d.updatedAt).toLocaleDateString("ko-KR")}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate">{d.overview?.workName || typeLabel}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{typeLabel} · {new Date(d.updatedAt).toLocaleDateString("ko-KR")}</p>
                   </div>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200 flex-shrink-0">
                     {rowCount}건
@@ -1567,79 +1617,337 @@ function SectionCard({ id, no, title, headerAction, children }: { id: string; no
   );
 }
 
-// ── Type Selection Grid ───────────────────────────────────────────────────────
+// ── Category colors (shared) ──────────────────────────────────────────────────
 
-function TypeSelectView({ onSelect }: { onSelect: (type: LegalCardTypeDef) => void }) {
-  const categoryColors: Record<string, string> = {
-    중장비: "bg-blue-50 text-blue-700 border-blue-200",
-    차량계: "bg-orange-50 text-orange-700 border-orange-200",
-    화학: "bg-purple-50 text-purple-700 border-purple-200",
-    전기: "bg-yellow-50 text-yellow-700 border-yellow-200",
-    토공: "bg-amber-50 text-amber-700 border-amber-200",
-    구조물: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    해체: "bg-red-50 text-red-700 border-red-200",
-    중량물: "bg-teal-50 text-teal-700 border-teal-200",
-    궤도: "bg-green-50 text-green-700 border-green-200",
-  };
+const CATEGORY_COLORS: Record<string, string> = {
+  중장비: "bg-blue-50 text-blue-700 border-blue-200",
+  차량계: "bg-orange-50 text-orange-700 border-orange-200",
+  화학:   "bg-purple-50 text-purple-700 border-purple-200",
+  전기:   "bg-yellow-50 text-yellow-700 border-yellow-200",
+  토공:   "bg-amber-50 text-amber-700 border-amber-200",
+  구조물: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  해체:   "bg-red-50 text-red-700 border-red-200",
+  중량물: "bg-teal-50 text-teal-700 border-teal-200",
+  궤도:   "bg-green-50 text-green-700 border-green-200",
+};
+
+// ── Type Multi-Selector (used inside OverviewSection) ─────────────────────────
+
+function TypeMultiSelector({ selectedTypeIds, customTypes, onTypesChange }: {
+  selectedTypeIds: string[];
+  customTypes: string[];
+  onTypesChange: (ids: string[], customs: string[]) => void;
+}) {
+  const hasCustom = customTypes.length > 0;
+  const totalSelected = selectedTypeIds.length + customTypes.filter(Boolean).length;
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-gray-50">
-      <div className="max-w-5xl mx-auto w-full px-6 py-8">
-        <div className="mb-7">
-          <h1 className="text-xl font-bold text-gray-800">법정 작업계획서 작성</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            산업안전보건기준에 관한 규칙 제38조 제1항 — 13개 작업유형 중 해당하는 유형을 선택하세요.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {LEGAL_CARD_TYPES.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => onSelect(t)}
-              className="text-left bg-white rounded-xl border border-gray-200 hover:border-teal-400 hover:shadow-md transition-all p-5 group"
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="ptw-label mb-0">작업유형 선택 <span className="text-red-400">*</span></label>
+        {totalSelected > 0 && (
+          <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: PRIMARY_LIGHT, color: PRIMARY }}>
+            {totalSelected}개 선택됨
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {LEGAL_CARD_TYPES.map((t) => {
+          const isSelected = selectedTypeIds.includes(t.id);
+          return (
+            <button key={t.id} type="button"
+              onClick={() => {
+                const newIds = isSelected ? selectedTypeIds.filter(id => id !== t.id) : [...selectedTypeIds, t.id];
+                onTypesChange(newIds, customTypes);
+              }}
+              className={`text-left p-3 rounded-xl border-2 transition-all ${
+                isSelected ? "border-teal-400 bg-teal-50" : "border-gray-200 bg-white hover:border-teal-200"
+              }`}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{t.icon}</span>
-                  <span className="text-lg font-bold text-gray-400">#{t.no.toString().padStart(2, "0")}</span>
-                </div>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded border ${categoryColors[t.category] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-base leading-none">{t.icon}</span>
+                <span className="text-[10px] font-mono text-gray-400">#{t.no.toString().padStart(2, "0")}</span>
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ml-auto ${CATEGORY_COLORS[t.category] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
                   {t.category}
                 </span>
               </div>
-              <p className="text-sm font-semibold text-gray-800 group-hover:text-teal-700 leading-snug mb-2">{t.shortLabel}</p>
-              <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">{t.description}</p>
-              <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
+              <p className={`text-xs font-semibold leading-snug ${isSelected ? "text-teal-700" : "text-gray-700"}`}>
+                {t.shortLabel}
+              </p>
+              <div className="mt-1.5 flex items-center gap-2 text-[9px] text-gray-400">
                 {t.preSurveyFields.length > 0 && (
-                  <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span> 사전조사 필요</span>
+                  <span className="flex items-center gap-0.5">
+                    <span className="w-1 h-1 rounded-full bg-amber-400 inline-block" />사전조사
+                  </span>
                 )}
-                <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 inline-block"></span> 작업계획 {t.planFields.length}항목</span>
+                <span className="flex items-center gap-0.5">
+                  <span className={`w-1 h-1 rounded-full inline-block ${isSelected ? "bg-teal-400" : "bg-gray-300"}`} />
+                  계획 {t.planFields.length}항목
+                </span>
               </div>
+              {isSelected && (
+                <div className="mt-1.5 flex justify-end">
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: PRIMARY }}>✓</span>
+                </div>
+              )}
             </button>
-          ))}
-        </div>
+          );
+        })}
+        {/* 기타 */}
+        <button type="button"
+          onClick={() => onTypesChange(selectedTypeIds, hasCustom ? [] : [""])}
+          className={`text-left p-3 rounded-xl border-2 transition-all ${
+            hasCustom ? "border-teal-400 bg-teal-50" : "border-dashed border-gray-200 bg-white hover:border-teal-200"
+          }`}
+        >
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span className="text-base leading-none">📝</span>
+            <span className="text-[10px] font-mono text-gray-400">#기타</span>
+          </div>
+          <p className={`text-xs font-semibold ${hasCustom ? "text-teal-700" : "text-gray-500"}`}>
+            기타 (직접입력)
+          </p>
+          <p className="text-[9px] text-gray-400 mt-1">법정 외 추가 유형</p>
+        </button>
       </div>
+
+      {/* Custom type inputs */}
+      {hasCustom && (
+        <div className="mt-2 space-y-1.5">
+          {customTypes.map((ct, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input type="text" value={ct}
+                onChange={(e) => {
+                  const nc = [...customTypes]; nc[i] = e.target.value; onTypesChange(selectedTypeIds, nc);
+                }}
+                placeholder={`기타 작업유형명 ${i + 1}`}
+                className={inp} />
+              <button type="button"
+                onClick={() => onTypesChange(selectedTypeIds, customTypes.filter((_, j) => j !== i))}
+                className="text-red-400 hover:text-red-600 text-sm px-2 shrink-0">✕</button>
+            </div>
+          ))}
+          <button type="button"
+            onClick={() => onTypesChange(selectedTypeIds, [...customTypes, ""])}
+            className="text-xs text-teal-600 hover:text-teal-700 border border-teal-200 hover:border-teal-300 px-3 py-1 rounded-lg transition-colors">
+            + 기타 유형 추가
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Document List for a type ──────────────────────────────────────────────────
+// ── Type Plan Section (tabbed, per selected type) ─────────────────────────────
+
+function TypePlanSection({
+  selectedTypeIds,
+  customTypes,
+  typeSections,
+  onTypeSectionsChange,
+  onPdfModal,
+}: {
+  selectedTypeIds: string[];
+  customTypes: string[];
+  typeSections: Record<string, TypeSectionData>;
+  onTypeSectionsChange: (updated: Record<string, TypeSectionData>) => void;
+  onPdfModal?: (url: string, title: string) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+
+  const tabs = [
+    ...selectedTypeIds.map((id) => {
+      const t = LEGAL_CARD_TYPES.find((x) => x.id === id);
+      return { key: id, label: t?.shortLabel ?? id, icon: t?.icon ?? "📄", typeDef: t ?? null };
+    }),
+    ...customTypes.filter(Boolean).map((name, i) => ({
+      key: `custom-${i}`,
+      label: name,
+      icon: "📝",
+      typeDef: null as null,
+    })),
+  ];
+
+  if (tabs.length === 0) {
+    return (
+      <div className="py-8 text-center text-sm text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+        작업 개요에서 작업유형을 선택하면 유형별 작성 항목이 표시됩니다.
+      </div>
+    );
+  }
+
+  const currentKey = activeTab && tabs.some((t) => t.key === activeTab) ? activeTab : tabs[0].key;
+
+  const updateSection = (key: string, updated: TypeSectionData) => {
+    onTypeSectionsChange({ ...typeSections, [key]: updated });
+  };
+
+  return (
+    <div>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 mb-4 overflow-x-auto gap-0">
+        {tabs.map((tab) => (
+          <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)}
+            className={`shrink-0 flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              currentKey === tab.key
+                ? "border-teal-500 text-teal-700 bg-teal-50/50"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}>
+            <span>{tab.icon}</span>
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {tabs.map((tab) => {
+        if (tab.key !== currentKey) return null;
+        const section = typeSections[tab.key] ?? emptyTypeSection();
+
+        if (!tab.typeDef) {
+          return (
+            <div key={tab.key} className="space-y-4">
+              <div>
+                <label className="ptw-label">작업계획 내용</label>
+                <textarea
+                  className={`${txa} h-40`}
+                  value={section.plan["content"] ?? ""}
+                  onChange={(e) => updateSection(tab.key, { ...section, plan: { ...section.plan, content: e.target.value } })}
+                  placeholder="기타 작업유형의 계획 내용을 기재하세요"
+                />
+              </div>
+            </div>
+          );
+        }
+
+        const td = tab.typeDef;
+        return (
+          <div key={tab.key} className="space-y-6">
+            <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-800">
+              <span className="font-semibold">{td.legalBasis}</span>
+              {td.description && <span className="ml-2 opacity-80">{td.description}</span>}
+            </div>
+
+            {/* preSurvey */}
+            {td.preSurveyFields.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-xs bg-amber-50 text-amber-700 border border-amber-200">사전조사</span>
+                  {td.preSurveyNote && <span className="text-xs text-slate-400 font-normal">{td.preSurveyNote}</span>}
+                </h4>
+                <div className="space-y-3">
+                  {td.preSurveyFields.map((f) => (
+                    <div key={f.id} className="border border-gray-100 rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0">{f.no}</span>
+                        <p className="text-sm font-medium text-gray-700">{f.label}{f.required && <span className="text-red-500 ml-1">*</span>}</p>
+                      </div>
+                      <textarea className={`${txa} h-24`}
+                        value={section.preSurvey[f.id] ?? ""}
+                        onChange={(e) => updateSection(tab.key, { ...section, preSurvey: { ...section.preSurvey, [f.id]: e.target.value } })}
+                        placeholder={f.placeholder} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* planFields */}
+            <div>
+              <h4 className="text-sm font-semibold text-slate-700 mb-2">
+                <span className="px-2 py-0.5 rounded text-xs bg-teal-50 text-teal-700 border border-teal-200">작업계획</span>
+              </h4>
+              <div className="space-y-3">
+                {td.planFields.map((f) => (
+                  <div key={f.id} id={`pf-${tab.key}-${f.id}`} className="border border-gray-100 rounded-lg p-4 bg-gray-50">
+                    <div className="mb-2 flex items-start gap-2">
+                      <span className="inline-block text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5 shrink-0 mt-0.5">{f.no}</span>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">{f.label}{f.required && <span className="text-red-500 ml-1">*</span>}</p>
+                        {f.hint && (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-xs text-amber-600">※ {f.hint}</p>
+                            {f.pdfUrl && onPdfModal && (
+                              <button type="button" onClick={() => onPdfModal(f.pdfUrl!, f.label)}
+                                className="text-xs text-teal-600 border border-teal-300 bg-teal-50 hover:bg-teal-100 rounded px-2 py-0.5 font-medium transition-colors shrink-0">
+                                상세보기
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {f.type === "checkboxItems" && f.items ? (
+                      <div className="space-y-2 mt-2">
+                        {f.items.map((item) => {
+                          const checked = section.checkboxItems[f.id]?.[item] ?? false;
+                          const note = section.checkboxNotes[f.id]?.[item] ?? "";
+                          return (
+                            <div key={item} className="bg-white rounded-lg border border-gray-200 p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <input type="checkbox" id={`cb-${tab.key}-${f.id}-${item}`} checked={checked}
+                                  onChange={() => {
+                                    const prev = section.checkboxItems[f.id] ?? {};
+                                    updateSection(tab.key, { ...section, checkboxItems: { ...section.checkboxItems, [f.id]: { ...prev, [item]: !prev[item] } } });
+                                  }}
+                                  className="w-4 h-4 accent-teal-500 shrink-0" />
+                                <label htmlFor={`cb-${tab.key}-${f.id}-${item}`}
+                                  className={`text-sm font-medium cursor-pointer ${checked ? "text-gray-800" : "text-gray-500"}`}>
+                                  {item}
+                                </label>
+                                {checked && <span className="ml-auto text-xs text-teal-600 font-medium">✓ 대책 수립</span>}
+                              </div>
+                              <textarea className={`${txa} h-20`} value={note}
+                                onChange={(e) => {
+                                  const prev = section.checkboxNotes[f.id] ?? {};
+                                  updateSection(tab.key, { ...section, checkboxNotes: { ...section.checkboxNotes, [f.id]: { ...prev, [item]: e.target.value } } });
+                                }}
+                                placeholder={`${item}에 대한 구체적인 예방대책을 기재하세요`} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : f.type === "textarea" ? (
+                      <textarea className={`${txa} h-28 mt-1`}
+                        value={section.plan[f.id] ?? ""}
+                        onChange={(e) => updateSection(tab.key, { ...section, plan: { ...section.plan, [f.id]: e.target.value } })}
+                        placeholder={f.placeholder} />
+                    ) : f.type === "select" && f.options ? (
+                      <select className={inp + " mt-1"} value={section.plan[f.id] ?? ""}
+                        onChange={(e) => updateSection(tab.key, { ...section, plan: { ...section.plan, [f.id]: e.target.value } })}>
+                        <option value="">선택하세요</option>
+                        {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : (
+                      <input className={inp + " mt-1"}
+                        value={section.plan[f.id] ?? ""}
+                        onChange={(e) => updateSection(tab.key, { ...section, plan: { ...section.plan, [f.id]: e.target.value } })}
+                        placeholder={f.placeholder} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Document List ─────────────────────────────────────────────────────────────
 
 function DocListView({
-  type,
   docs,
   onNew,
   onOpen,
   onDelete,
-  onBack,
 }: {
-  type: LegalCardTypeDef;
   docs: CardDoc[];
   onNew: () => void;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
-  onBack: () => void;
 }) {
   const statusLabel: Record<string, string> = { draft: "작성중", completed: "완료" };
   const statusCls: Record<string, string> = { draft: "bg-amber-100 text-amber-700", completed: "bg-green-100 text-green-700" };
@@ -1647,15 +1955,9 @@ function DocListView({
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-gray-50">
       <div className="max-w-3xl mx-auto w-full px-6 py-8">
-        <div className="mb-6 flex items-center gap-3">
-          <button onClick={onBack} className={btn("ghost") + " px-2"}>← 뒤로</button>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{type.icon}</span>
-              <h1 className="text-lg font-bold text-gray-800">{type.shortLabel}</h1>
-            </div>
-            <p className="text-xs text-gray-500 mt-0.5">{type.legalBasis}</p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-lg font-bold text-gray-800">통합 작업계획서 작성</h1>
+          <p className="text-xs text-gray-500 mt-0.5">산업안전보건기준에 관한 규칙 제38조 — 법정 작업유형을 포함한 통합 작업계획서</p>
         </div>
 
         <div className="flex items-center justify-between mb-4">
@@ -1670,21 +1972,34 @@ function DocListView({
           </div>
         ) : (
           <div className="space-y-3">
-            {docs.map((d) => (
-              <div key={d.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 hover:border-teal-300 hover:shadow-sm transition-all cursor-pointer" onClick={() => onOpen(d.id)}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-gray-800 truncate">{d.overview.workName || "(제목 없음)"}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusCls[d.status]}`}>{statusLabel[d.status]}</span>
+            {docs.map((d) => {
+              const typeLabels = [
+                ...d.selectedTypeIds.map((id) => LEGAL_CARD_TYPES.find((t) => t.id === id)?.shortLabel ?? id),
+                ...d.customTypes.filter(Boolean),
+              ];
+              return (
+                <div key={d.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 hover:border-teal-300 hover:shadow-sm transition-all cursor-pointer" onClick={() => onOpen(d.id)}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-semibold text-gray-800 truncate">{d.overview.workName || "(제목 없음)"}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusCls[d.status]}`}>{statusLabel[d.status]}</span>
+                    </div>
+                    {typeLabels.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {typeLabels.map((lbl) => (
+                          <span key={lbl} className="text-[10px] px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">{lbl}</span>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-400">{d.overview.createdDate} · {d.overview.location || "-"}</p>
                   </div>
-                  <p className="text-xs text-gray-400">{d.overview.createdDate} · {d.overview.location || "-"}</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={(e) => { e.stopPropagation(); onOpen(d.id); }} className={btn("secondary") + " text-xs"}>열기</button>
+                    <button onClick={(e) => { e.stopPropagation(); if (confirm("삭제하시겠습니까?")) onDelete(d.id); }} className="text-xs text-red-400 hover:text-red-600 px-2">삭제</button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={(e) => { e.stopPropagation(); onOpen(d.id); }} className={btn("secondary") + " text-xs"}>열기</button>
-                  <button onClick={(e) => { e.stopPropagation(); if (confirm("삭제하시겠습니까?")) onDelete(d.id); }} className="text-xs text-red-400 hover:text-red-600 px-2">삭제</button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -1868,11 +2183,19 @@ function SignerCard({ label, name, onNameChange, signature, onSignClick, placeho
   );
 }
 
-function OverviewSection({ data, onChange, typeId }: { data: CardOverview; onChange: (k: keyof CardOverview, v: string | boolean) => void; typeId?: string }) {
+function OverviewSection({ data, onChange, selectedTypeIds, customTypes, onTypesChange }: {
+  data: CardOverview;
+  onChange: (k: keyof CardOverview, v: string | boolean) => void;
+  selectedTypeIds: string[];
+  customTypes: string[];
+  onTypesChange: (ids: string[], customs: string[]) => void;
+}) {
   const [signFor, setSignFor] = useState<"author" | "reviewer" | null>(null);
 
-  const typeDef = typeId ? LEGAL_CARD_TYPES.find((t) => t.id === typeId) : undefined;
-  const workNameFallback = typeDef?.shortLabel ?? "";
+  const workNameFallback = [
+    ...selectedTypeIds.map((id) => LEGAL_CARD_TYPES.find((t) => t.id === id)?.shortLabel).filter(Boolean),
+    ...customTypes.filter(Boolean),
+  ].join(" + ");
 
   const autoDocName = (() => {
     const d = data.createdDate ? new Date(data.createdDate) : new Date();
@@ -1891,6 +2214,9 @@ function OverviewSection({ data, onChange, typeId }: { data: CardOverview; onCha
 
   return (
     <div className="space-y-3">
+      {/* 작업유형 선택 */}
+      <TypeMultiSelector selectedTypeIds={selectedTypeIds} customTypes={customTypes} onTypesChange={onTypesChange} />
+
       {/* 사업장명 */}
       <div>
         <label className="ptw-label flex items-center gap-1.5">
@@ -2012,101 +2338,15 @@ function OverviewSection({ data, onChange, typeId }: { data: CardOverview; onCha
   );
 }
 
-// ── Plan Fields Renderer ──────────────────────────────────────────────────────
-
-function PlanFieldsRenderer({
-  fields,
-  values,
-  checkboxItems,
-  checkboxNotes,
-  onChangeValue,
-  onToggleCheckbox,
-  onChangeCheckboxNote,
-}: {
-  fields: LegalCardTypeDef["planFields"];
-  values: Record<string, string>;
-  checkboxItems: Record<string, Record<string, boolean>>;
-  checkboxNotes: Record<string, Record<string, string>>;
-  onChangeValue: (fieldId: string, value: string) => void;
-  onToggleCheckbox: (fieldId: string, item: string) => void;
-  onChangeCheckboxNote: (fieldId: string, item: string, note: string) => void;
-}) {
-  return (
-    <div className="space-y-5">
-      {fields.map((f) => (
-        <div key={f.id} className="border border-gray-100 rounded-lg p-4 bg-gray-50">
-          <div className="mb-2 flex items-start gap-2">
-            <span className="inline-block text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5 shrink-0 mt-0.5">{f.no}</span>
-            <div>
-              <p className="text-sm font-medium text-gray-700">{f.label}{f.required && <span className="text-red-500 ml-1">*</span>}</p>
-              {f.hint && <p className="text-xs text-amber-600 mt-0.5">※ {f.hint}</p>}
-            </div>
-          </div>
-
-          {f.type === "checkboxItems" && f.items ? (
-            <div className="space-y-2 mt-3">
-              {f.items.map((item) => {
-                const checked = checkboxItems[f.id]?.[item] ?? false;
-                const note = checkboxNotes[f.id]?.[item] ?? "";
-                return (
-                  <div key={item} className="bg-white rounded-lg border border-gray-200 p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <input
-                        type="checkbox"
-                        id={`cb-${f.id}-${item}`}
-                        checked={checked}
-                        onChange={() => onToggleCheckbox(f.id, item)}
-                        className="w-4 h-4 accent-teal-500 shrink-0"
-                      />
-                      <label htmlFor={`cb-${f.id}-${item}`} className="text-sm text-gray-700 font-medium cursor-pointer">{item}</label>
-                    </div>
-                    <textarea
-                      className={`${txa} h-16 mt-1`}
-                      value={note}
-                      onChange={(e) => onChangeCheckboxNote(f.id, item, e.target.value)}
-                      placeholder={`${item}에 대한 구체적인 대책을 기재하세요`}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          ) : f.type === "textarea" ? (
-            <textarea
-              className={`${txa} h-28 mt-1`}
-              value={values[f.id] ?? ""}
-              onChange={(e) => onChangeValue(f.id, e.target.value)}
-              placeholder={f.placeholder}
-            />
-          ) : f.type === "select" && f.options ? (
-            <select className={inp + " mt-1"} value={values[f.id] ?? ""} onChange={(e) => onChangeValue(f.id, e.target.value)}>
-              <option value="">선택하세요</option>
-              {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-          ) : (
-            <input
-              className={inp + " mt-1"}
-              value={values[f.id] ?? ""}
-              onChange={(e) => onChangeValue(f.id, e.target.value)}
-              placeholder={f.placeholder}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ── Form View ─────────────────────────────────────────────────────────────────
 
 type NavItem = { id: string; label: string };
 
 function FormView({
-  type,
   doc,
   onSave,
   onBack,
 }: {
-  type: LegalCardTypeDef;
   doc: CardDoc;
   onSave: (updated: CardDoc) => void;
   onBack: () => void;
@@ -2124,8 +2364,7 @@ function FormView({
     { id: "overview", label: "작업 개요" },
     { id: "personnel", label: "작업인원 배치" },
     { id: "equipment", label: "사용 장비" },
-    ...(type.preSurveyFields.length > 0 ? [{ id: "preSurvey", label: "사전조사" }] : []),
-    { id: "plan", label: "작업계획서 내용" },
+    { id: "typePlan", label: "작업유형별 계획" },
     { id: "drawings", label: "운행경로 및 작업계획 도면" },
     { id: "riskAssessment", label: "위험성평가" },
     { id: "safetyChecklist", label: "안전점검" },
@@ -2184,13 +2423,13 @@ function FormView({
     setIsDirty(true);
   }, []);
 
-  const handlePreSurvey = useCallback((fieldId: string, value: string) => {
-    setData((prev) => ({ ...prev, preSurvey: { ...prev.preSurvey, [fieldId]: value }, updatedAt: new Date().toISOString() }));
+  const handleTypesChange = useCallback((ids: string[], customs: string[]) => {
+    setData((prev) => ({ ...prev, selectedTypeIds: ids, customTypes: customs, updatedAt: new Date().toISOString() }));
     setIsDirty(true);
   }, []);
 
-  const handlePlanValue = useCallback((fieldId: string, value: string) => {
-    setData((prev) => ({ ...prev, plan: { ...prev.plan, [fieldId]: value }, updatedAt: new Date().toISOString() }));
+  const handleTypeSection = useCallback((updated: Record<string, TypeSectionData>) => {
+    setData((prev) => ({ ...prev, typeSections: updated, updatedAt: new Date().toISOString() }));
     setIsDirty(true);
   }, []);
 
@@ -2202,22 +2441,6 @@ function FormView({
       ...(section === "training" ? { training: source.training } : {}),
       updatedAt: new Date().toISOString(),
     }));
-    setIsDirty(true);
-  }, []);
-
-  const handleToggleCheckbox = useCallback((fieldId: string, item: string) => {
-    setData((prev) => {
-      const prev_ = prev.checkboxItems[fieldId] ?? {};
-      return { ...prev, checkboxItems: { ...prev.checkboxItems, [fieldId]: { ...prev_, [item]: !prev_[item] } }, updatedAt: new Date().toISOString() };
-    });
-    setIsDirty(true);
-  }, []);
-
-  const handleCheckboxNote = useCallback((fieldId: string, item: string, note: string) => {
-    setData((prev) => {
-      const prev_ = prev.checkboxNotes[fieldId] ?? {};
-      return { ...prev, checkboxNotes: { ...prev.checkboxNotes, [fieldId]: { ...prev_, [item]: note } }, updatedAt: new Date().toISOString() };
-    });
     setIsDirty(true);
   }, []);
 
@@ -2256,7 +2479,7 @@ function FormView({
     });
     return () => observerRef.current?.disconnect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type.id]);
+  }, [data.id]);
 
   const statusCls: Record<string, string> = { draft: "bg-amber-100 text-amber-700", completed: "bg-green-100 text-green-700" };
   const statusLabel: Record<string, string> = { draft: "작성중", completed: "완료" };
@@ -2278,10 +2501,7 @@ function FormView({
       <aside className="hidden lg:flex w-52 bg-white border-r border-gray-200 flex-col shrink-0">
         <div className="px-4 py-3 border-b border-gray-100">
           <button onClick={onBack} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 mb-2">← 목록으로</button>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{type.icon}</span>
-            <span className="text-xs font-semibold text-gray-700 leading-tight">{type.shortLabel}</span>
-          </div>
+          <p className="text-xs font-semibold text-gray-700 leading-tight truncate">{data.overview.workName || "새 작업계획서"}</p>
           <div className="mt-1.5 flex items-center gap-2">
             <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusCls[data.status]}`}>{statusLabel[data.status]}</span>
             {isDirty && <span className="text-xs text-amber-500">미저장</span>}
@@ -2302,22 +2522,6 @@ function FormView({
               {n.label}
             </button>
           ))}
-          {activeNav === "plan" && (
-            <div className="pl-4 border-l-2 border-gray-100 ml-4 mt-1 space-y-0.5">
-              {type.planFields.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => {
-                    const el = document.getElementById(`pf-${f.id}`);
-                    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                  className="w-full text-left text-xs px-2 py-1.5 text-gray-500 hover:text-teal-700 hover:bg-teal-50 rounded transition-colors"
-                >
-                  {f.no}. {f.label.slice(0, 20)}{f.label.length > 20 ? "…" : ""}
-                </button>
-              ))}
-            </div>
-          )}
         </nav>
 
         <div className="p-3 border-t border-gray-100 space-y-2">
@@ -2345,8 +2549,7 @@ function FormView({
           <div className="flex items-center justify-between px-4 py-2.5">
             <div className="flex items-center gap-2">
               <button onClick={onBack} className="text-xs text-gray-500 hover:text-gray-700 mr-1">← 목록</button>
-              <span className="text-base">{type.icon}</span>
-              <span className="text-xs font-semibold text-gray-700 truncate max-w-[140px]">{type.shortLabel}</span>
+              <span className="text-xs font-semibold text-gray-700 truncate max-w-[140px]">{data.overview.workName || "새 작업계획서"}</span>
               <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusCls[data.status]}`}>{statusLabel[data.status]}</span>
               {isDirty && <span className="text-xs text-amber-500">미저장</span>}
             </div>
@@ -2379,21 +2582,15 @@ function FormView({
 
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-          {/* Type header */}
-          <div className="bg-gradient-to-r from-teal-600 to-teal-500 rounded-xl p-5 text-white">
-            <div className="flex items-center gap-3 mb-1">
-              <span className="text-2xl">{type.icon}</span>
-              <div>
-                <p className="text-xs opacity-80">{type.legalBasis}</p>
-                <h2 className="text-lg font-bold leading-snug">{type.label}</h2>
-              </div>
-            </div>
-            <p className="text-sm opacity-80">{type.description}</p>
-          </div>
-
           {/* 작업 개요 */}
           <SectionCard id="overview" title="작업 개요">
-            <OverviewSection data={data.overview} onChange={handleOverview} typeId={data.typeId} />
+            <OverviewSection
+              data={data.overview}
+              onChange={handleOverview}
+              selectedTypeIds={data.selectedTypeIds}
+              customTypes={data.customTypes}
+              onTypesChange={handleTypesChange}
+            />
           </SectionCard>
 
           {/* 작업인원 배치 */}
@@ -2403,118 +2600,18 @@ function FormView({
 
           {/* 사용 장비 정보 */}
           <SectionCard id="equipment" title="사용 장비 정보">
-            <EquipmentSection data={data.equipment ?? emptyEquipment()} onChange={handleEquipment} allowedEquipKeys={type.allowedEquipKeys} />
+            <EquipmentSection data={data.equipment ?? emptyEquipment()} onChange={handleEquipment} />
           </SectionCard>
 
-          {/* 사전조사 */}
-          {type.preSurveyFields.length > 0 && (
-            <SectionCard id="preSurvey" title="사전조사 내용">
-              {type.preSurveyNote && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-                  <span className="font-semibold">사전조사 목적:</span> {type.preSurveyNote}
-                </div>
-              )}
-              <div className="space-y-4">
-                {type.preSurveyFields.map((f) => (
-                  <div key={f.id} className="border border-gray-100 rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-start gap-2 mb-2">
-                      <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0 mt-0.5">{f.no}</span>
-                      <p className="text-sm font-medium text-gray-700">{f.label}{f.required && <span className="text-red-500 ml-1">*</span>}</p>
-                    </div>
-                    <textarea
-                      className={`${txa} h-24`}
-                      value={data.preSurvey[f.id] ?? ""}
-                      onChange={(e) => handlePreSurvey(f.id, e.target.value)}
-                      placeholder={f.placeholder}
-                    />
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          )}
-
-          {/* 작업계획서 내용 */}
-          <SectionCard id="plan" title="작업계획서 내용">
-            <div id="plan-top" className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
-              <span className="font-semibold">별표 4 기준:</span> {type.legalBasis}에 따른 작업계획서 작성 항목
-            </div>
-            <div className="space-y-4">
-              {type.planFields.map((f) => (
-                <div key={f.id} id={`pf-${f.id}`} className="border border-gray-100 rounded-lg p-4 bg-gray-50">
-                  <div className="mb-2 flex items-start gap-2">
-                    <span className="inline-block text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5 shrink-0 mt-0.5">{f.no}</span>
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">{f.label}{f.required && <span className="text-red-500 ml-1">*</span>}</p>
-                      {f.hint && (
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <p className="text-xs text-amber-600">※ {f.hint}</p>
-                          {f.pdfUrl && (
-                            <button
-                              type="button"
-                              onClick={() => setPdfModal({ url: f.pdfUrl!, title: f.label })}
-                              className="text-xs text-teal-600 border border-teal-300 bg-teal-50 hover:bg-teal-100 rounded px-2 py-0.5 font-medium transition-colors shrink-0"
-                            >
-                              상세보기
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {f.type === "checkboxItems" && f.items ? (
-                    <div className="space-y-2 mt-2">
-                      {f.items.map((item) => {
-                        const checked = data.checkboxItems[f.id]?.[item] ?? false;
-                        const note = data.checkboxNotes[f.id]?.[item] ?? "";
-                        return (
-                          <div key={item} className="bg-white rounded-lg border border-gray-200 p-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              <input
-                                type="checkbox"
-                                id={`cb-${f.id}-${item}`}
-                                checked={checked}
-                                onChange={() => handleToggleCheckbox(f.id, item)}
-                                className="w-4 h-4 accent-teal-500 shrink-0"
-                              />
-                              <label htmlFor={`cb-${f.id}-${item}`} className={`text-sm font-medium cursor-pointer ${checked ? "text-gray-800" : "text-gray-500"}`}>
-                                {item}
-                              </label>
-                              {checked && <span className="ml-auto text-xs text-teal-600 font-medium">✓ 대책 수립</span>}
-                            </div>
-                            <textarea
-                              className={`${txa} h-20`}
-                              value={note}
-                              onChange={(e) => handleCheckboxNote(f.id, item, e.target.value)}
-                              placeholder={`${item}에 대한 구체적인 예방대책을 기재하세요`}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : f.type === "textarea" ? (
-                    <textarea
-                      className={`${txa} h-28 mt-1`}
-                      value={data.plan[f.id] ?? ""}
-                      onChange={(e) => handlePlanValue(f.id, e.target.value)}
-                      placeholder={f.placeholder}
-                    />
-                  ) : f.type === "select" && f.options ? (
-                    <select className={inp + " mt-1"} value={data.plan[f.id] ?? ""} onChange={(e) => handlePlanValue(f.id, e.target.value)}>
-                      <option value="">선택하세요</option>
-                      {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  ) : (
-                    <input
-                      className={inp + " mt-1"}
-                      value={data.plan[f.id] ?? ""}
-                      onChange={(e) => handlePlanValue(f.id, e.target.value)}
-                      placeholder={f.placeholder}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+          {/* 작업유형별 계획 */}
+          <SectionCard id="typePlan" title="작업유형별 계획">
+            <TypePlanSection
+              selectedTypeIds={data.selectedTypeIds}
+              customTypes={data.customTypes}
+              typeSections={data.typeSections}
+              onTypeSectionsChange={handleTypeSection}
+              onPdfModal={(url, title) => setPdfModal({ url, title })}
+            />
           </SectionCard>
 
           {/* 도면 */}
@@ -2582,11 +2679,10 @@ function FormView({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-type ViewState = "typeSelect" | "docList" | "form";
+type ViewState = "docList" | "form";
 
 export default function SafetyCardWritePage() {
-  const [view, setView] = useState<ViewState>("typeSelect");
-  const [selectedType, setSelectedType] = useState<LegalCardTypeDef | null>(null);
+  const [view, setView] = useState<ViewState>("docList");
   const [docs, setDocs] = useState<CardDoc[]>([]);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
 
@@ -2594,17 +2690,10 @@ export default function SafetyCardWritePage() {
     setDocs(loadAll());
   }, []);
 
-  const docsForType = selectedType ? docs.filter((d) => d.typeId === selectedType.id) : [];
   const activeDoc = activeDocId ? docs.find((d) => d.id === activeDocId) ?? null : null;
 
-  const handleSelectType = (type: LegalCardTypeDef) => {
-    setSelectedType(type);
-    setView("docList");
-  };
-
   const handleNewDoc = () => {
-    if (!selectedType) return;
-    const doc = newDoc(selectedType.id);
+    const doc = newDoc();
     const updated = [...docs, doc];
     setDocs(updated);
     saveAll(updated);
@@ -2634,33 +2723,20 @@ export default function SafetyCardWritePage() {
     setView("docList");
   };
 
-  const handleBackToTypes = () => {
-    setSelectedType(null);
-    setActiveDocId(null);
-    setView("typeSelect");
-  };
-
-  if (view === "typeSelect") {
-    return <TypeSelectView onSelect={handleSelectType} />;
-  }
-
-  if (view === "docList" && selectedType) {
+  if (view === "docList") {
     return (
       <DocListView
-        type={selectedType}
-        docs={docsForType}
+        docs={docs}
         onNew={handleNewDoc}
         onOpen={handleOpenDoc}
         onDelete={handleDeleteDoc}
-        onBack={handleBackToTypes}
       />
     );
   }
 
-  if (view === "form" && selectedType && activeDoc) {
+  if (view === "form" && activeDoc) {
     return (
       <FormView
-        type={selectedType}
         doc={activeDoc}
         onSave={handleSaveDoc}
         onBack={handleBackToList}
