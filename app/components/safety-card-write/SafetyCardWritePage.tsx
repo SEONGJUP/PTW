@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LEGAL_CARD_TYPES } from "@/config/safetyCard/legalCardTypeDefs";
 import { EQUIP_EXTRA_FORMS, type ExtraData } from "./EquipExtraForms";
 
@@ -106,10 +106,11 @@ interface RiskData { rows: RiskRow[] }
 type SafetyResult = "양호" | "불량" | "해당없음";
 interface SafetyCheckData { checks: Record<string, SafetyResult>; note: string }
 
-interface TrainingRow { id: string; trainingType: string; subType: string; date: string; duration: string; instructor: string; completedCount: string }
+interface TrainingRow { id: string; trainee: string; date: string; content: string }
 interface TrainingData { rows: TrainingRow[] }
 
-interface EmergencyData { hospital: string; fire: string; police: string; supervisor: string; safetyManager: string; note: string }
+interface EmergencyRow { id: string; name: string; address: string; contact: string; type: string }
+interface EmergencyData { rows: EmergencyRow[] }
 
 interface DrawingFile { id: string; name: string; type: string; dataUrl: string; markup?: string }
 interface DrawingsData { files: DrawingFile[] }
@@ -165,8 +166,34 @@ function emptyMachineRow(): MachineRow {
 }
 function emptyRisk(): RiskData { return { rows: [{ id: "r1", process: "", unitTask: "", risk: "", mitigation: "", grade: "중", keyManagement: false }] }; }
 function emptySafetyChecklist(): SafetyCheckData { return { checks: {}, note: "" }; }
-function emptyTraining(): TrainingData { return { rows: [] }; }
-function emptyEmergency(): EmergencyData { return { hospital: "", fire: "", police: "", supervisor: "", safetyManager: "", note: "" }; }
+function emptyTraining(): TrainingData { return { rows: [{ id: "tr_init", trainee: "", date: "", content: "" }] }; }
+function emptyEmergency(): EmergencyData {
+  return {
+    rows: [
+      { id: "ec_d1", name: "당산119안전센터",      address: "서울특별시 영등포구 양평로 70-1",       contact: "02-2633-0119", type: "소방시설" },
+      { id: "ec_d2", name: "씨엠병원",              address: "서울특별시 영등포구 영등포로36길 13",    contact: "070-4698-7811", type: "종합병원" },
+      { id: "ec_d3", name: "영등포보건소",           address: "서울특별시 영등포구 당산로 123",        contact: "02-2670-4820", type: "보건소"   },
+      { id: "ec_d4", name: "서울영등포경찰서",       address: "영등포구 국회대로 608",                 contact: "-",            type: "치안시설" },
+      { id: "ec_d5", name: "영등포구청",             address: "서울특별시 영등포구 당산로 123",        contact: "02-2670-3000", type: "관공서"   },
+      { id: "ec_d6", name: "서울남부고용노동지청",   address: "서울특별시 영등포구 선유로 120",        contact: "02-2639-2100", type: "노동청"   },
+    ],
+  };
+}
+function migrateEmergency(e: unknown): EmergencyData {
+  if (!e || typeof e !== "object") return emptyEmergency();
+  const obj = e as Record<string, unknown>;
+  if (Array.isArray(obj.rows)) return e as EmergencyData;
+  const rows: EmergencyRow[] = [];
+  const mk = (id: string, name: string, type: string) =>
+    ({ id, name: String(name || ""), address: "", contact: "", type });
+  if (obj.hospital) rows.push(mk("ec1", obj.hospital as string, "병원"));
+  if (obj.fire)     rows.push(mk("ec2", obj.fire as string, "소방서"));
+  if (obj.police)   rows.push(mk("ec3", obj.police as string, "경찰서"));
+  if (obj.supervisor)   rows.push(mk("ec4", obj.supervisor as string, "관리감독자"));
+  if (obj.safetyManager) rows.push(mk("ec5", obj.safetyManager as string, "안전관리자"));
+  if (obj.note)     rows.push(mk("ec6", obj.note as string, "기타"));
+  return { rows };
+}
 function emptyDrawings(): DrawingsData { return { files: [] }; }
 function emptyOtherFiles(): OtherFilesData { return { files: [], equipFiles: {} }; }
 
@@ -216,6 +243,7 @@ function loadAll(): CardDoc[] {
         selectedTypeIds: d.selectedTypeIds ?? [],
         customTypes: d.customTypes ?? [],
         typeSections: d.typeSections ?? {},
+        emergency: migrateEmergency(d.emergency),
       };
     });
   } catch { return []; }
@@ -556,6 +584,71 @@ function MachineSpecCard({ row, onChange, onRemove }: {
 
 // ── Equipment image upload ────────────────────────────────────────────────────
 
+function EquipFilePanel({ equipKey, files, onChange }: {
+  equipKey: string;
+  files: EquipDocFile[];
+  onChange: (files: EquipDocFile[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const newId = () => `f_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const fileIcon = (t: string) => t.includes("pdf") ? "📄" : t.startsWith("image/") ? "🖼️" : "📎";
+  const docTypes = EQUIP_DOC_TYPES[equipKey] ?? DEFAULT_DOC_TYPES;
+
+  const addFile = (docType: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const added: EquipDocFile[] = Array.from(e.target.files ?? []).map((f) => ({ id: newId(), name: f.name, mimeType: f.type, docCategory: docType }));
+    onChange([...files, ...added]);
+    const el = inputRefs.current[docType];
+    if (el) el.value = "";
+  };
+  const removeFile = (id: string) => onChange(files.filter((f) => f.id !== id));
+
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: `${PRIMARY}30` }}>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold transition-colors"
+        style={{ background: open ? `${PRIMARY}0d` : "#f8fafc", color: open ? PRIMARY : "#475569" }}>
+        <span className="flex items-center gap-2">
+          <span>📁</span>
+          <span>장비별 서류 첨부</span>
+          <span className="font-normal text-slate-400">(선택)</span>
+          {files.length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: PRIMARY_LIGHT, color: PRIMARY }}>{files.length}건</span>
+          )}
+        </span>
+        <span className="inline-block transition-transform" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
+      </button>
+      {open && (
+        <div className="border-t divide-y" style={{ borderColor: `${PRIMARY}20` }}>
+          {docTypes.map((docType) => {
+            const docFiles = files.filter((f) => f.docCategory === docType);
+            return (
+              <div key={docType} className="px-4 py-2.5 flex items-start gap-3">
+                <span className="text-xs text-slate-500 w-44 shrink-0 pt-0.5">{docType}</span>
+                <div className="flex flex-wrap items-center gap-1.5 flex-1">
+                  {docFiles.map((f) => (
+                    <div key={f.id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-slate-200 bg-slate-50">
+                      <span>{fileIcon(f.mimeType)}</span>
+                      <span className="text-slate-700 max-w-[8rem] truncate">{f.name}</span>
+                      <button type="button" onClick={() => removeFile(f.id)} className="text-slate-300 hover:text-red-400 ml-0.5">✕</button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => inputRefs.current[docType]?.click()}
+                    className="text-xs px-2.5 py-1 rounded-full border border-dashed hover:border-teal-400 hover:text-teal-600 text-slate-400"
+                    style={{ borderColor: "#cbd5e1" }}>+ 첨부</button>
+                  <input ref={(el) => { inputRefs.current[docType] = el; }}
+                    type="file" multiple accept="image/*,.pdf" className="hidden"
+                    onChange={(e) => addFile(docType, e)} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EquipDetailPanel({ equipKey, extraData, onExtraChange }: {
   equipKey: string;
   extraData: ExtraData;
@@ -587,7 +680,13 @@ function EquipDetailPanel({ equipKey, extraData, onExtraChange }: {
 
 // ── Equipment Section ─────────────────────────────────────────────────────────
 
-function EquipmentSection({ data, onChange, allowedEquipKeys }: { data: EquipmentData; onChange: (d: EquipmentData) => void; allowedEquipKeys?: string[] }) {
+function EquipmentSection({ data, onChange, allowedEquipKeys, equipFiles, onEquipFilesChange }: {
+  data: EquipmentData;
+  onChange: (d: EquipmentData) => void;
+  allowedEquipKeys?: string[];
+  equipFiles?: Record<string, EquipDocFile[]>;
+  onEquipFilesChange?: (eqKey: string, files: EquipDocFile[]) => void;
+}) {
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
   const selectedKeys = data.selectedKeys ?? [];
   const rows = data.rows ?? [];
@@ -740,6 +839,13 @@ function EquipmentSection({ data, onChange, allowedEquipKeys }: { data: Equipmen
                   extraData={allExtraData[key] ?? {}}
                   onExtraChange={(s, v) => updateEquipExtra(key, s, v)}
                 />
+                {onEquipFilesChange && (
+                  <EquipFilePanel
+                    equipKey={key}
+                    files={equipFiles?.[key] ?? []}
+                    onChange={(files) => onEquipFilesChange(key, files)}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -914,61 +1020,89 @@ function SafetyChecklistSection({ data, onChange }: { data: SafetyCheckData; onC
 
 // ── Training Section ──────────────────────────────────────────────────────────
 
-const TRAINING_TYPE_OPTIONS = ["정기교육", "채용 시 교육", "작업내용 변경 시", "특별교육", "관리감독자 교육", "기타"];
-
 function TrainingSection({ data, onChange }: { data: TrainingData; onChange: (d: TrainingData) => void }) {
-  const rows = data.rows ?? [];
+  const rows = (data.rows ?? []).map((r) => ({
+    id: r.id,
+    trainee: (r as unknown as Record<string, string>).trainee ?? "",
+    date: r.date ?? "",
+    content: (r as unknown as Record<string, string>).content ?? "",
+  }));
+
   const updateRow = (id: string, key: keyof TrainingRow, value: string) =>
     onChange({ rows: rows.map((r) => r.id === id ? { ...r, [key]: value } : r) });
-  const addRow = (trainingType = "") =>
-    onChange({ rows: [...rows, { id: `tr${Date.now()}`, trainingType, subType: "", date: "", duration: "", instructor: "", completedCount: "" }] });
+  const addRow = () =>
+    onChange({ rows: [...rows, { id: `tr${Date.now()}`, trainee: "", date: "", content: "" }] });
   const removeRow = (id: string) => onChange({ rows: rows.filter((r) => r.id !== id) });
+
+  const ci = "w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 bg-white";
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {TRAINING_TYPE_OPTIONS.map((t) => (
-          <button key={t} type="button" onClick={() => addRow(t)}
-            className="text-xs px-3 py-1.5 rounded-full border transition-all"
-            style={{ borderColor: `${PRIMARY}55`, color: PRIMARY, background: PRIMARY_LIGHT }}>
-            + {t}
-          </button>
-        ))}
+      {/* SafeBuddy 연동 배너 */}
+      <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-blue-100 bg-blue-50">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-white border border-blue-200 flex items-center justify-center shrink-0">
+            <svg className="w-4 h-4 text-teal-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-700">세이프버디 연동</p>
+            <p className="text-[11px] text-slate-400">기존 안전교육 내역을 불러와 자동 입력합니다</p>
+          </div>
+        </div>
+        <button type="button"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-colors"
+          style={{ background: PRIMARY }}>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          안전교육 불러오기
+        </button>
       </div>
-      <div className="rounded-xl border border-slate-200 overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]">
-          <thead>
-            <tr style={{ background: PRIMARY_LIGHT }}>
-              {["교육종류", "교육세부종류", "교육날짜", "교육시간", "강사명", "수료자 수", ""].map((h) => (
-                <th key={h} className="px-3 py-2 text-left font-medium text-slate-600 text-xs whitespace-nowrap">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-4 text-center text-xs text-slate-400">위 버튼으로 교육 유형을 선택하거나 직접 추가하세요</td></tr>
-            )}
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t border-slate-100">
-                <td className="px-2 py-1">
-                  <select value={r.trainingType} onChange={(e) => updateRow(r.id, "trainingType", e.target.value)}
-                    className="px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 bg-white">
-                    <option value="">선택</option>
-                    {TRAINING_TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                  </select>
-                </td>
-                <td className="px-2 py-1"><input type="text" value={r.subType} onChange={(e) => updateRow(r.id, "subType", e.target.value)} className={si} placeholder="세부 내용" /></td>
-                <td className="px-2 py-1"><input type="date" value={r.date} onChange={(e) => updateRow(r.id, "date", e.target.value)} className={si} /></td>
-                <td className="px-2 py-1"><input type="text" value={r.duration} onChange={(e) => updateRow(r.id, "duration", e.target.value)} className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 bg-white" placeholder="1시간" /></td>
-                <td className="px-2 py-1"><input type="text" value={r.instructor} onChange={(e) => updateRow(r.id, "instructor", e.target.value)} className={si} placeholder="홍길동" /></td>
-                <td className="px-2 py-1"><input type="number" value={r.completedCount} onChange={(e) => updateRow(r.id, "completedCount", e.target.value)} className="w-16 px-2 py-1 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 bg-white" placeholder="0" /></td>
-                <td className="px-2 py-1"><button type="button" onClick={() => removeRow(r.id)} className="text-slate-300 hover:text-red-400 text-sm px-1">✕</button></td>
+
+      {/* 명단 테이블 */}
+      <div>
+        <p className="text-xs font-semibold text-slate-600 mb-2">교육 참여 작업자 명단</p>
+        <div className="rounded-xl border border-slate-200 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 bg-white">
+                <th className="px-3 py-2.5 text-center font-medium text-slate-400 w-10">#</th>
+                <th className="px-3 py-2.5 text-left font-medium text-slate-500">교육 이수자</th>
+                <th className="px-3 py-2.5 text-left font-medium text-slate-500 w-44">교육 일시</th>
+                <th className="px-3 py-2.5 text-left font-medium text-slate-500">교육 내용</th>
+                <th className="w-8" />
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="px-3 py-2 border-t border-slate-100">
-          <button type="button" onClick={() => addRow()} className="text-xs text-slate-400 hover:text-teal-500">+ 행 추가</button>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((r, idx) => (
+                <tr key={r.id}>
+                  <td className="px-3 py-2 text-center text-slate-400">{idx + 1}</td>
+                  <td className="px-2 py-2">
+                    <input value={r.trainee} onChange={(e) => updateRow(r.id, "trainee", e.target.value)}
+                      className={ci} placeholder="교육 이수자" />
+                  </td>
+                  <td className="px-2 py-2">
+                    <input type="date" value={r.date} onChange={(e) => updateRow(r.id, "date", e.target.value)}
+                      className={ci} placeholder="YYYY-MM-DD" />
+                  </td>
+                  <td className="px-2 py-2">
+                    <input value={r.content} onChange={(e) => updateRow(r.id, "content", e.target.value)}
+                      className={ci} placeholder="교육 내용" />
+                  </td>
+                  <td className="px-2 py-2">
+                    <button type="button" onClick={() => removeRow(r.id)}
+                      className="text-slate-300 hover:text-red-400 px-1">✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="px-4 py-2.5 border-t border-slate-100">
+            <button type="button" onClick={addRow}
+              className="text-xs text-slate-400 hover:text-teal-500 transition-colors">+ 행 추가</button>
+          </div>
         </div>
       </div>
     </div>
@@ -978,18 +1112,61 @@ function TrainingSection({ data, onChange }: { data: TrainingData; onChange: (d:
 // ── Emergency Contact Section ─────────────────────────────────────────────────
 
 function EmergencyContactSection({ data, onChange }: { data: EmergencyData; onChange: (d: EmergencyData) => void }) {
-  const f = (key: keyof EmergencyData) => (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-600">
-        {{ hospital: "응급의료기관", fire: "소방서 (119)", police: "경찰서 (112)", supervisor: "관리감독자", safetyManager: "안전관리자", note: "기타 연락처" }[key]}
-      </label>
-      <input type="text" value={data[key]} onChange={(e) => onChange({ ...data, [key]: e.target.value })}
-        className={inp} placeholder={{ hospital: "병원명 및 전화번호", fire: "관할 소방서", police: "관할 경찰서", supervisor: "이름 / 연락처", safetyManager: "이름 / 연락처", note: "기타 비상연락 정보" }[key]} />
-    </div>
-  );
+  const rows = data.rows ?? [];
+  const newId = () => `ec${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const addRow = () => onChange({ rows: [...rows, { id: newId(), name: "", address: "", contact: "", type: "" }] });
+  const updateRow = (id: string, key: keyof EmergencyRow, value: string) =>
+    onChange({ rows: rows.map((r) => r.id === id ? { ...r, [key]: value } : r) });
+  const removeRow = (id: string) => onChange({ rows: rows.filter((r) => r.id !== id) });
+
+  const cellCls = "w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 bg-white";
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      {f("hospital")}{f("fire")}{f("police")}{f("supervisor")}{f("safetyManager")}{f("note")}
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      {/* 헤더 */}
+      <div className="grid gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-medium text-slate-500"
+        style={{ gridTemplateColumns: "1fr 1.5fr 1fr 1fr 36px" }}>
+        <span>이름</span>
+        <span>주소</span>
+        <span>연락처</span>
+        <span>유형</span>
+        <span>도구</span>
+      </div>
+
+      {/* 행 목록 */}
+      <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+        {rows.length === 0 && (
+          <p className="px-4 py-6 text-center text-xs text-slate-400">아래 버튼으로 비상연락처를 추가하세요</p>
+        )}
+        {rows.map((r) => (
+          <div key={r.id} className="grid gap-3 px-4 py-2.5 items-center"
+            style={{ gridTemplateColumns: "1fr 1.5fr 1fr 1fr 36px" }}>
+            <input value={r.name} onChange={(e) => updateRow(r.id, "name", e.target.value)}
+              className={cellCls} placeholder="기관명" />
+            <input value={r.address} onChange={(e) => updateRow(r.id, "address", e.target.value)}
+              className={cellCls} placeholder="주소" />
+            <input value={r.contact} onChange={(e) => updateRow(r.id, "contact", e.target.value)}
+              className={cellCls} placeholder="전화번호" />
+            <input value={r.type} onChange={(e) => updateRow(r.id, "type", e.target.value)}
+              className={cellCls} placeholder="유형" />
+            <button type="button" onClick={() => removeRow(r.id)}
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-red-200 bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors shrink-0">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* 추가 버튼 */}
+      <div className="px-4 py-2.5 border-t border-slate-100">
+        <button type="button" onClick={addRow}
+          className="text-xs px-3 py-1.5 rounded-lg border border-dashed hover:border-teal-400 hover:text-teal-600 text-slate-400 transition-colors"
+          style={{ borderColor: "#d1d5db" }}>
+          + 연락처 추가
+        </button>
+      </div>
     </div>
   );
 }
@@ -1375,16 +1552,12 @@ const DEFAULT_DOC_TYPES: readonly string[] = [
   "기타(제원표, 사전검토사항)",
 ];
 
-function OtherFilesSection({ data, onChange, selectedEquipKeys }: {
+function OtherFilesSection({ data, onChange }: {
   data: OtherFilesData;
   onChange: (d: OtherFilesData) => void;
-  selectedEquipKeys: string[];
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const eqInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const [expandedEq, setExpandedEq] = useState<Set<string>>(new Set());
   const files = data.files ?? [];
-  const equipFiles = data.equipFiles ?? {};
   const newId = () => `f_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const fileIcon = (type: string) => type.includes("pdf") ? "📄" : type.startsWith("image/") ? "🖼️" : "📎";
 
@@ -1395,78 +1568,9 @@ function OtherFilesSection({ data, onChange, selectedEquipKeys }: {
   };
   const removeGeneral = (id: string) => onChange({ ...data, files: files.filter((f) => f.id !== id) });
 
-  const handleEqFile = (eqKey: string, docCategory: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const added: EquipDocFile[] = Array.from(e.target.files ?? []).map((f) => ({ id: newId(), name: f.name, mimeType: f.type, docCategory }));
-    const existing = equipFiles[eqKey] ?? [];
-    onChange({ ...data, equipFiles: { ...equipFiles, [eqKey]: [...existing, ...added] } });
-    const el = eqInputRefs.current[`${eqKey}__${docCategory}`];
-    if (el) el.value = "";
-  };
-  const removeEqFile = (eqKey: string, fileId: string) =>
-    onChange({ ...data, equipFiles: { ...equipFiles, [eqKey]: (equipFiles[eqKey] ?? []).filter((f) => f.id !== fileId) } });
-
-  const toggleEq = (key: string) =>
-    setExpandedEq((prev) => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
-
   return (
     <div className="space-y-4">
-      {selectedEquipKeys.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">장비별 서류 첨부 <span className="normal-case font-normal text-slate-400">(선택)</span></p>
-          {selectedEquipKeys.map((key) => {
-            const info = EQUIP_TYPES[key as EquipKey];
-            if (!info) return null;
-            const eqf = equipFiles[key] ?? [];
-            const isOpen = expandedEq.has(key);
-            return (
-              <div key={key} className="rounded-xl border border-slate-200 overflow-hidden">
-                <button type="button" onClick={() => toggleEq(key)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 transition-colors">
-                  <span className="text-sm font-medium text-slate-700">{info.icon} {info.label}</span>
-                  <div className="flex items-center gap-2">
-                    {eqf.length > 0 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: PRIMARY_LIGHT, color: PRIMARY }}>{eqf.length}건</span>
-                    )}
-                    <span className="text-slate-400 text-xs">{isOpen ? "▲" : "▼"}</span>
-                  </div>
-                </button>
-                {isOpen && (
-                  <div className="border-t border-slate-100 divide-y divide-slate-50">
-                    {(EQUIP_DOC_TYPES[key] ?? DEFAULT_DOC_TYPES).map((docType) => {
-                      const docFiles = eqf.filter((f) => f.docCategory === docType);
-                      const refKey = `${key}__${docType}`;
-                      return (
-                        <div key={docType} className="px-4 py-2.5 flex items-start gap-3">
-                          <span className="text-xs text-slate-500 w-44 shrink-0 pt-0.5">{docType}</span>
-                          <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                            {docFiles.map((f) => (
-                              <div key={f.id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-slate-200 bg-slate-50">
-                                <span>{fileIcon(f.mimeType)}</span>
-                                <span className="text-slate-700 max-w-[8rem] truncate">{f.name}</span>
-                                <button type="button" onClick={() => removeEqFile(key, f.id)} className="text-slate-300 hover:text-red-400 ml-0.5">✕</button>
-                              </div>
-                            ))}
-                            <button type="button" onClick={() => eqInputRefs.current[refKey]?.click()}
-                              className="text-xs px-2.5 py-1 rounded-full border border-dashed hover:border-teal-400 hover:text-teal-600 text-slate-400"
-                              style={{ borderColor: "#cbd5e1" }}>+ 첨부</button>
-                            <input ref={(el) => { eqInputRefs.current[refKey] = el; }}
-                              type="file" multiple accept="image/*,.pdf" className="hidden"
-                              onChange={(e) => handleEqFile(key, docType, e)} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
       <div className="space-y-2">
-        {selectedEquipKeys.length > 0 && (
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">일반 첨부파일 <span className="normal-case font-normal text-slate-400">(선택)</span></p>
-        )}
         <div className="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer hover:border-teal-400 transition-colors"
           style={{ borderColor: "#b2ece9", background: PRIMARY_LIGHT }}
           onClick={() => inputRef.current?.click()}>
@@ -1651,7 +1755,11 @@ function TypeMultiSelector({ selectedTypeIds, customTypes, onTypesChange }: {
           </span>
         )}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="flex items-start gap-2 px-3 py-2 mb-2 rounded-lg border text-xs text-teal-700" style={{ background: PRIMARY_LIGHT, borderColor: `${PRIMARY}44` }}>
+        <span className="shrink-0 mt-0.5">📋</span>
+        <span>산업안전보건기준에 관한 규칙 제38조 13개 작업유형 중 해당하는 유형을 선택하세요</span>
+      </div>
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
         {LEGAL_CARD_TYPES.map((t) => {
           const isSelected = selectedTypeIds.includes(t.id);
           return (
@@ -1739,6 +1847,195 @@ function TypeMultiSelector({ selectedTypeIds, customTypes, onTypesChange }: {
 }
 
 // ── Type Plan Section (tabbed, per selected type) ─────────────────────────────
+
+// ── HeavyLoad Calculator ──────────────────────────────────────────────────────
+
+function HeavyLoadCalc({ plan, onPlanChange }: {
+  plan: Record<string, string>;
+  onPlanChange: (p: Record<string, string>) => void;
+}) {
+  const [showLift, setShowLift] = useState(false);
+  const [showCargo, setShowCargo] = useState(false);
+
+  const g = (k: string) => plan[k] ?? "";
+  const s = (k: string, v: string) => onPlanChange({ ...plan, [k]: v });
+
+  const fi2 = "w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-teal-400 bg-white";
+
+  // 인양능력 자동계산
+  const allowedLoad = parseFloat(g("hc_allowedLoad")) || 0;
+  const unitWeight  = parseFloat(g("hc_unitWeight"))  || 0;
+  const onceQty     = parseFloat(g("hc_onceQty"))     || 0;
+  const totalQty    = parseFloat(g("hc_totalQty"))    || 0;
+  const onceWeight  = unitWeight * onceQty;
+  const totalWeight = unitWeight * totalQty;
+  const liftMargin  = allowedLoad - onceWeight;
+  const liftOk      = allowedLoad > 0 && onceWeight > 0 ? liftMargin >= 0 : null;
+
+  // 적재상태 자동계산
+  const stackH = parseFloat(g("hc_stackHeight")) || 0;
+  const minH   = parseFloat(g("hc_minHeight"))   || 0;
+  const stackW = parseFloat(g("hc_stackWidth"))  || 0;
+  const minW   = parseFloat(g("hc_minWidth"))    || 0;
+  const cargoOkH = stackH > 0 && minH > 0 ? stackH <= minH : null;
+  const cargoOkW = stackW > 0 && minW > 0 ? stackW <= minW : null;
+  const cargoOk  = cargoOkH !== null && cargoOkW !== null ? (cargoOkH && cargoOkW) : null;
+
+  const Badge = ({ ok }: { ok: boolean | null }) => {
+    if (ok === null) return <span className="text-xs text-slate-300">입력값 필요</span>;
+    return ok
+      ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">✓ 적정</span>
+      : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">✕ 부적정</span>;
+  };
+
+  const CalcRow = ({ label, value, unit }: { label: string; value: string | number; unit?: string }) => (
+    <div className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
+      <span className="text-xs text-slate-500">{label}</span>
+      <span className="text-xs font-semibold text-slate-700">{value}{unit && <span className="font-normal text-slate-400 ml-1">{unit}</span>}</span>
+    </div>
+  );
+
+  const Section = ({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) => (
+    <div className="border border-slate-200 rounded-xl overflow-hidden">
+      <button type="button" onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+        <span className="flex items-center gap-2">
+          <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{ background: "#E6FAF9", color: "#00B7AF" }}>선택</span>
+          {title}
+        </span>
+        <span className="text-slate-400 text-xs">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && <div className="p-4 border-t border-slate-100 space-y-4 bg-white">{children}</div>}
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+        <span className="px-2 py-0.5 rounded text-xs bg-purple-50 text-purple-700 border border-purple-200">정격하중 검토</span>
+      </h4>
+
+      {/* 인양능력 검토 */}
+      <Section title="인양능력 검토결과" open={showLift} onToggle={() => setShowLift(v => !v)}>
+        <div className="grid grid-cols-2 gap-4">
+          {/* 입력 */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-slate-500 pb-1 border-b border-slate-100">화물 정보 입력</p>
+            <div>
+              <label className="ptw-label">허용하중 ① (kg) <span className="text-slate-400 font-normal">제원표 확인 후 기재</span></label>
+              <input className={fi2} type="number" value={g("hc_allowedLoad")} onChange={e => s("hc_allowedLoad", e.target.value)} placeholder="예: 5000" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="ptw-label">품명</label>
+                <input className={fi2} value={g("hc_itemName")} onChange={e => s("hc_itemName", e.target.value)} placeholder="예: 철근(D-22)" />
+              </div>
+              <div>
+                <label className="ptw-label">단위중량 (kg)</label>
+                <input className={fi2} type="number" value={g("hc_unitWeight")} onChange={e => s("hc_unitWeight", e.target.value)} placeholder="예: 50" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="ptw-label">종류/형상</label>
+                <input className={fi2} value={g("hc_shape")} onChange={e => s("hc_shape", e.target.value)} placeholder="예: 봉형/직선" />
+              </div>
+              <div>
+                <label className="ptw-label">크기 (가로×세로×높이) m</label>
+                <input className={fi2} value={g("hc_size")} onChange={e => s("hc_size", e.target.value)} placeholder="예: 1.0×0.5×0.3" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="ptw-label">1회 운반수량 (개)</label>
+                <input className={fi2} type="number" value={g("hc_onceQty")} onChange={e => s("hc_onceQty", e.target.value)} placeholder="예: 10" />
+              </div>
+              <div>
+                <label className="ptw-label">총 수량 (개)</label>
+                <input className={fi2} type="number" value={g("hc_totalQty")} onChange={e => s("hc_totalQty", e.target.value)} placeholder="예: 100" />
+              </div>
+            </div>
+          </div>
+
+          {/* 자동계산 결과 */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-slate-500 pb-1 border-b border-slate-100">자동 계산 결과</p>
+            <div className="bg-slate-50 rounded-lg p-3 space-y-0.5">
+              <CalcRow label="허용하중 ①" value={allowedLoad > 0 ? allowedLoad.toLocaleString() : "—"} unit="kg" />
+              <CalcRow label="1회 운반중량 ② (단위중량 × 1회수량)" value={onceWeight > 0 ? onceWeight.toLocaleString() : "—"} unit="kg" />
+              <CalcRow label="총 중량 (단위중량 × 총수량)" value={totalWeight > 0 ? totalWeight.toLocaleString() : "—"} unit="kg" />
+            </div>
+            <div className="bg-white border-2 rounded-xl p-4 text-center space-y-2" style={{ borderColor: liftOk === null ? "#e2e8f0" : liftOk ? "#86efac" : "#fca5a5" }}>
+              <p className="text-xs text-slate-400">운반능력 검토 ① − ②</p>
+              <p className="text-2xl font-bold" style={{ color: liftOk === null ? "#94a3b8" : liftOk ? "#16a34a" : "#dc2626" }}>
+                {liftOk !== null ? `${liftMargin >= 0 ? "+" : ""}${liftMargin.toLocaleString()} kg` : "—"}
+              </p>
+              <Badge ok={liftOk} />
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* 화물 및 적재상태 */}
+      <Section title="화물 및 적재상태" open={showCargo} onToggle={() => setShowCargo(v => !v)}>
+        <div className="grid grid-cols-2 gap-4">
+          {/* 입력 */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-slate-500 pb-1 border-b border-slate-100">적재 치수 입력</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="ptw-label">적재 높이 ① (m)</label>
+                <input className={fi2} type="number" step="0.1" value={g("hc_stackHeight")} onChange={e => s("hc_stackHeight", e.target.value)} placeholder="예: 1.5" />
+              </div>
+              <div>
+                <label className="ptw-label">통로 최소 높이 ② (m)</label>
+                <input className={fi2} type="number" step="0.1" value={g("hc_minHeight")} onChange={e => s("hc_minHeight", e.target.value)} placeholder="예: 2.0" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="ptw-label">적재 너비 ③ (m)</label>
+                <input className={fi2} type="number" step="0.1" value={g("hc_stackWidth")} onChange={e => s("hc_stackWidth", e.target.value)} placeholder="예: 1.2" />
+              </div>
+              <div>
+                <label className="ptw-label">통로 최소 너비 ④ (m)</label>
+                <input className={fi2} type="number" step="0.1" value={g("hc_minWidth")} onChange={e => s("hc_minWidth", e.target.value)} placeholder="예: 1.5" />
+              </div>
+            </div>
+            <div>
+              <label className="ptw-label">운전자 시야 확보</label>
+              <input className={fi2} value={g("hc_driverView")} onChange={e => s("hc_driverView", e.target.value)} placeholder="예: 적정 (조치: 유도원 배치)" />
+            </div>
+            <div>
+              <label className="ptw-label">적재물 고정 상태</label>
+              <input className={fi2} value={g("hc_fixState")} onChange={e => s("hc_fixState", e.target.value)} placeholder="예: 적정 (조치: 결속 고정)" />
+            </div>
+          </div>
+
+          {/* 자동계산 결과 */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-slate-500 pb-1 border-b border-slate-100">자동 검토 결과</p>
+            <div className="bg-slate-50 rounded-lg p-3 space-y-0.5">
+              <CalcRow label="적재높이 ①" value={stackH > 0 ? stackH : "—"} unit="m" />
+              <CalcRow label="통로 최소높이 ②" value={minH > 0 ? minH : "—"} unit="m" />
+              <CalcRow label="높이 검토 ①≤②" value={cargoOkH === null ? "—" : cargoOkH ? "적정" : "부적정"} />
+              <CalcRow label="적재너비 ③" value={stackW > 0 ? stackW : "—"} unit="m" />
+              <CalcRow label="통로 최소너비 ④" value={minW > 0 ? minW : "—"} unit="m" />
+              <CalcRow label="너비 검토 ③≤④" value={cargoOkW === null ? "—" : cargoOkW ? "적정" : "부적정"} />
+            </div>
+            <div className="bg-white border-2 rounded-xl p-4 text-center space-y-2" style={{ borderColor: cargoOk === null ? "#e2e8f0" : cargoOk ? "#86efac" : "#fca5a5" }}>
+              <p className="text-xs text-slate-400">적재상태 종합 검토</p>
+              <p className="text-lg font-bold" style={{ color: cargoOk === null ? "#94a3b8" : cargoOk ? "#16a34a" : "#dc2626" }}>
+                {cargoOk === null ? "치수 입력 필요" : cargoOk ? "통과" : "검토 필요"}
+              </p>
+              <Badge ok={cargoOk} />
+            </div>
+          </div>
+        </div>
+      </Section>
+    </div>
+  );
+}
 
 function TypePlanSection({
   selectedTypeIds,
@@ -1850,6 +2147,14 @@ function TypePlanSection({
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* 중량물 취급 전용 계산기 */}
+            {tab.key === "heavyLoad" && (
+              <HeavyLoadCalc
+                plan={section.plan}
+                onPlanChange={(p) => updateSection(tab.key, { ...section, plan: p })}
+              />
             )}
 
             {/* planFields */}
@@ -2191,20 +2496,36 @@ function OverviewSection({ data, onChange, selectedTypeIds, customTypes, onTypes
   onTypesChange: (ids: string[], customs: string[]) => void;
 }) {
   const [signFor, setSignFor] = useState<"author" | "reviewer" | null>(null);
+  const [showCompanyDrop, setShowCompanyDrop] = useState(false);
 
   const workNameFallback = [
     ...selectedTypeIds.map((id) => LEGAL_CARD_TYPES.find((t) => t.id === id)?.shortLabel).filter(Boolean),
     ...customTypes.filter(Boolean),
-  ].join(" + ");
+  ].join(" · ");
 
   const autoDocName = (() => {
     const d = data.createdDate ? new Date(data.createdDate) : new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
-    const wn = data.workName || workNameFallback;
-    return `${y}년 ${m}월 ${day}일 ${wn ? `${wn} ` : ""}작업계획서`;
+    return `${y}년 ${m}월 ${day}일 작업계획서`;
   })();
+
+  const allCompanyNames = useMemo(() => {
+    try {
+      const raw: Array<{ overview?: { companyName?: string } }> = JSON.parse(localStorage.getItem("ptw_legal_cards_v1") ?? "[]");
+      return [...new Set(raw.map((d) => d.overview?.companyName).filter((n): n is string => !!n))];
+    } catch { return []; }
+  }, []);
+
+  const filteredCompanies = allCompanyNames.filter(
+    (n) => n.toLowerCase().includes((data.companyName ?? "").toLowerCase()) && n !== data.companyName
+  );
+
+  useEffect(() => {
+    if (!data.docName) onChange("docName", autoDocName);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const durationDays = (() => {
     if (!data.startDate || !data.endDate) return null;
@@ -2217,6 +2538,8 @@ function OverviewSection({ data, onChange, selectedTypeIds, customTypes, onTypes
       {/* 작업유형 선택 */}
       <TypeMultiSelector selectedTypeIds={selectedTypeIds} customTypes={customTypes} onTypesChange={onTypesChange} />
 
+      <hr className="border-slate-200" />
+
       {/* 사업장명 */}
       <div>
         <label className="ptw-label flex items-center gap-1.5">
@@ -2228,46 +2551,61 @@ function OverviewSection({ data, onChange, selectedTypeIds, customTypes, onTypes
           style={{ borderColor: `${PRIMARY}22` }} />
       </div>
 
-      {/* 문서명 */}
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <label className="ptw-label mb-0">문서명</label>
-          {data.docName && (
-            <button type="button" onClick={() => onChange("docName", "")}
-              className="text-[11px] text-slate-400 hover:text-teal-500 transition-colors">↺ 기본값으로</button>
-          )}
-        </div>
-        <input type="text" value={data.docName} onChange={(e) => onChange("docName", e.target.value)}
-          placeholder={autoDocName} className={inp} />
-        {!data.docName && <p className="text-[11px] text-slate-400 mt-0.5">기본값: {autoDocName}</p>}
-      </div>
-
-      {/* 작업명 + 작성일 */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-2">
-          <Field label="작업명" required>
-            <input className={inp} value={data.workName} onChange={(e) => onChange("workName", e.target.value)} placeholder={workNameFallback || "예: 굴착기 작업"} />
-          </Field>
+      {/* Row 1: 문서명(3) + 작성일(1) */}
+      <div className="grid grid-cols-4 gap-3 items-end">
+        <div className="col-span-3">
+          <div className="flex items-center justify-between mb-1">
+            <label className="ptw-label mb-0">문서명</label>
+            {data.docName !== autoDocName && (
+              <button type="button" onClick={() => onChange("docName", autoDocName)}
+                className="text-[11px] text-slate-400 hover:text-teal-500 transition-colors">↺ 기본값으로</button>
+            )}
+          </div>
+          <input type="text" value={data.docName} onChange={(e) => onChange("docName", e.target.value)}
+            className={inp} />
         </div>
         <Field label="작성일">
           <input className={inp} type="date" value={data.createdDate} onChange={(e) => onChange("createdDate", e.target.value)} />
         </Field>
       </div>
 
-      {/* 업체명/작업장소 + 작성자/검토자 */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Left: 업체명 (top) + 작업장소 (bottom) */}
-        <div className="space-y-3">
-          <Field label="업체명">
-            <input className={inp} value={data.companyName} onChange={(e) => onChange("companyName", e.target.value)} placeholder="업체명" />
+      {/* Row 2: 작업명·작업장소·업체명(2) | 작성자(1) | 검토자(1) */}
+      <div className="grid grid-cols-4 gap-3">
+        {/* Left 2/4: 작업명, 작업장소, 업체명 */}
+        <div className="col-span-2 space-y-3">
+          <Field label="작업명" required>
+            <input className="w-full px-3 py-2 border rounded-lg text-sm bg-slate-50 text-slate-500 cursor-not-allowed"
+              style={{ borderColor: `${PRIMARY}22` }}
+              value={workNameFallback} readOnly
+              placeholder="작업유형을 선택하면 자동입력" />
           </Field>
           <Field label="작업장소">
             <input className={inp} value={data.location} onChange={(e) => onChange("location", e.target.value)} placeholder="예: 제1공장 3층" />
           </Field>
+          <Field label="업체명">
+            <div className="relative">
+              <input className={inp} value={data.companyName}
+                onChange={(e) => { onChange("companyName", e.target.value); setShowCompanyDrop(true); }}
+                onFocus={() => setShowCompanyDrop(true)}
+                onBlur={() => setTimeout(() => setShowCompanyDrop(false), 150)}
+                placeholder="업체명" />
+              {showCompanyDrop && filteredCompanies.length > 0 && (
+                <ul className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto text-sm">
+                  {filteredCompanies.map((n) => (
+                    <li key={n}
+                      onMouseDown={() => { onChange("companyName", n); setShowCompanyDrop(false); }}
+                      className="px-3 py-2 cursor-pointer hover:bg-teal-50 hover:text-teal-700">
+                      {n}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Field>
         </div>
-        {/* Right: 작성자 + 검토자(조건부) — 좌우 배치 */}
-        <div className="grid grid-cols-2 gap-3">
-          <SignerCard
+
+        {/* Right 2/4: 작성자 + 검토자 각 1칸 */}
+        <SignerCard
             label={data.showReviewer ? "작성자(작업업체 담당자)" : "작성자(담당자)"}
             name={data.author} onNameChange={(v) => onChange("author", v)}
             signature={data.authorSignature ?? ""}
@@ -2291,7 +2629,6 @@ function OverviewSection({ data, onChange, selectedTypeIds, customTypes, onTypes
               </button>
             </div>
           )}
-        </div>
       </div>
 
       {signFor && (
@@ -2424,7 +2761,17 @@ function FormView({
   }, []);
 
   const handleTypesChange = useCallback((ids: string[], customs: string[]) => {
-    setData((prev) => ({ ...prev, selectedTypeIds: ids, customTypes: customs, updatedAt: new Date().toISOString() }));
+    const newWorkName = [
+      ...ids.map((id) => LEGAL_CARD_TYPES.find((t) => t.id === id)?.shortLabel).filter(Boolean),
+      ...customs.filter(Boolean),
+    ].join(" · ");
+    setData((prev) => ({
+      ...prev,
+      selectedTypeIds: ids,
+      customTypes: customs,
+      overview: { ...prev.overview, workName: newWorkName },
+      updatedAt: new Date().toISOString(),
+    }));
     setIsDirty(true);
   }, []);
 
@@ -2600,11 +2947,20 @@ function FormView({
 
           {/* 사용 장비 정보 */}
           <SectionCard id="equipment" title="사용 장비 정보">
-            <EquipmentSection data={data.equipment ?? emptyEquipment()} onChange={handleEquipment} />
+            <EquipmentSection
+              data={data.equipment ?? emptyEquipment()}
+              onChange={handleEquipment}
+              equipFiles={data.otherFiles?.equipFiles ?? {}}
+              onEquipFilesChange={(eqKey, files) => {
+                const prev = data.otherFiles ?? emptyOtherFiles();
+                handleOtherFiles({ ...prev, equipFiles: { ...prev.equipFiles, [eqKey]: files } });
+              }}
+            />
           </SectionCard>
 
           {/* 작업유형별 계획 */}
-          <SectionCard id="typePlan" title="작업유형별 계획">
+          <SectionCard id="typePlan" title="작업유형별 계획"
+            headerAction={<span className="text-[11px] font-semibold px-2 py-0.5 rounded border border-orange-200 bg-orange-50 text-orange-600">📋 법정 필수입력사항</span>}>
             <TypePlanSection
               selectedTypeIds={data.selectedTypeIds}
               customTypes={data.customTypes}
@@ -2644,7 +3000,7 @@ function FormView({
           </SectionCard>
 
           {/* 안전교육 */}
-          <SectionCard id="training" title="안전교육"
+          <SectionCard id="training" no="2" title="작업자 안전교육 현황"
             headerAction={
               <button type="button" onClick={() => setImportModal("training")}
                 className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border border-teal-200 text-teal-600 bg-teal-50 hover:bg-teal-100 transition-colors">
@@ -2665,7 +3021,6 @@ function FormView({
             <OtherFilesSection
               data={data.otherFiles ?? emptyOtherFiles()}
               onChange={handleOtherFiles}
-              selectedEquipKeys={data.equipment?.selectedKeys ?? []}
             />
           </SectionCard>
 

@@ -60,43 +60,73 @@ function EqSub({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-interface CheckRow { checked: boolean; note: string }
-type CheckTableData = Record<string, CheckRow>;
+type CheckTableData = Record<string, unknown>;
 
-function EqChecklist({ items, data, onChange }: {
+function InspectBtn({ active, label, color, onClick }: {
+  active: boolean; label: string; color: string; onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className="text-[11px] px-2 py-0.5 rounded-full border transition-all font-medium whitespace-nowrap"
+      style={{ background: active ? color : "white", borderColor: active ? color : "#e2e8f0", color: active ? "white" : "#94a3b8" }}>
+      {label}
+    </button>
+  );
+}
+
+function getInspectRow(data: Record<string, unknown>, item: string) {
+  const raw = (data[item] ?? {}) as Record<string, unknown>;
+  const exists = (raw.exists as string) ?? (raw.checked === true ? "유" : "");
+  return { exists, status: (raw.status as string) ?? "", note: (raw.note as string) ?? "" };
+}
+
+function EqChecklist({ items, data, onChange, colLabel = "점검 항목" }: {
   items: string[];
   data: CheckTableData;
   onChange: (d: CheckTableData) => void;
+  colLabel?: string;
 }) {
-  const upd = (item: string, field: keyof CheckRow, val: boolean | string) =>
-    onChange({ ...data, [item]: { checked: data[item]?.checked ?? false, note: data[item]?.note ?? "", [field]: val } });
+  const upd = (item: string, key: string, val: string) => {
+    const prev = (data[item] ?? {}) as Record<string, unknown>;
+    onChange({ ...data, [item]: { ...prev, [key]: (prev[key] as string) === val ? "" : val } });
+  };
   return (
     <div className="rounded-xl border border-slate-200 overflow-hidden">
-      <table className="w-full text-xs" style={{ tableLayout: "fixed" }}>
-        <colgroup><col style={{ width: "2rem" }} /><col style={{ width: "44%" }} /><col /></colgroup>
+      <table className="w-full text-xs">
         <thead>
-          <tr style={{ background: PRIMARY_LIGHT }}>
-            <th className="px-3 py-2" />
-            <th className="px-3 py-2 text-left font-medium text-slate-600">점검 항목</th>
-            <th className="px-3 py-2 text-left font-medium text-slate-600">확인 내용 및 조치</th>
+          <tr className="bg-slate-50 border-b border-slate-200">
+            <th className="px-3 py-2.5 text-left font-medium text-slate-500">{colLabel}</th>
+            <th className="px-3 py-2.5 text-left font-medium text-slate-500 w-44">여부</th>
+            <th className="px-3 py-2.5 text-left font-medium text-slate-500 w-32">상태</th>
+            <th className="px-3 py-2.5 text-left font-medium text-slate-500">추가조치사항</th>
           </tr>
         </thead>
-        <tbody>
-          {items.map((c) => {
-            const row = data[c] ?? { checked: false, note: "" };
+        <tbody className="divide-y divide-slate-100">
+          {items.map((item) => {
+            const row = getInspectRow(data, item);
+            const isYu = row.exists === "유";
             return (
-              <tr key={c} className="border-t border-slate-100">
-                <td className="px-3 py-2 text-center">
-                  <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white cursor-pointer mx-auto"
-                    style={{ background: row.checked ? PRIMARY : "white", borderColor: row.checked ? PRIMARY : "#cbd5e1", fontSize: "0.55rem" }}
-                    onClick={() => upd(c, "checked", !row.checked)}>{row.checked ? "✓" : ""}</div>
+              <tr key={item}>
+                <td className="px-3 py-2 font-medium text-slate-600">{item}</td>
+                <td className="px-3 py-2">
+                  <div className="flex gap-1">
+                    <InspectBtn active={row.exists === "유"} label="유" color={PRIMARY} onClick={() => upd(item, "exists", "유")} />
+                    <InspectBtn active={row.exists === "무"} label="무" color="#64748b" onClick={() => upd(item, "exists", "무")} />
+                    <InspectBtn active={row.exists === "해당없음"} label="해당없음" color="#94a3b8" onClick={() => upd(item, "exists", "해당없음")} />
+                  </div>
                 </td>
-                <td className="px-3 py-2 font-medium" style={{ color: row.checked ? PRIMARY : "#64748b" }}>{c}</td>
+                <td className="px-3 py-2">
+                  {isYu ? (
+                    <div className="flex gap-1">
+                      <InspectBtn active={row.status === "정상"} label="정상" color="#22c55e" onClick={() => upd(item, "status", "정상")} />
+                      <InspectBtn active={row.status === "비정상"} label="비정상" color="#ef4444" onClick={() => upd(item, "status", "비정상")} />
+                    </div>
+                  ) : <span className="text-slate-300">—</span>}
+                </td>
                 <td className="px-2 py-1.5">
-                  <input type="text" value={row.note} onChange={(e) => upd(c, "note", e.target.value)}
-                    disabled={!row.checked}
-                    className={`${fi} disabled:bg-slate-50 disabled:text-slate-300`}
-                    placeholder={row.checked ? "확인 내용 및 조치 입력" : "—"} />
+                  {isYu
+                    ? <input type="text" value={row.note} onChange={(e) => upd(item, "note", e.target.value)} className={fi} placeholder="추가 조치사항 입력" />
+                    : <span className="text-slate-300">—</span>}
                 </td>
               </tr>
             );
@@ -177,48 +207,12 @@ function EqCheckboxList({ items, data, onChange }: {
   );
 }
 
-// ── Utility row table (crane swing / excavator utility) ───────────────────────
-
+// EqRowTable → EqChecklist에 colLabel 전달로 통합
 function EqRowTable({ items, colLabel, data, onChange }: {
   items: string[]; colLabel: string;
   data: CheckTableData; onChange: (d: CheckTableData) => void;
 }) {
-  const upd = (item: string, field: keyof CheckRow, val: boolean | string) =>
-    onChange({ ...data, [item]: { checked: data[item]?.checked ?? false, note: data[item]?.note ?? "", [field]: val } });
-  return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden">
-      <table className="w-full text-xs" style={{ tableLayout: "fixed" }}>
-        <colgroup><col style={{ width: "2rem" }} /><col style={{ width: "40%" }} /><col /></colgroup>
-        <thead>
-          <tr style={{ background: PRIMARY_LIGHT }}>
-            <th className="px-3 py-2" />
-            <th className="px-3 py-2 text-left font-medium text-slate-600">{colLabel}</th>
-            <th className="px-3 py-2 text-left font-medium text-slate-600">확인 내용 및 조치</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => {
-            const row = data[item] ?? { checked: false, note: "" };
-            return (
-              <tr key={item} className="border-t border-slate-100">
-                <td className="px-3 py-2 text-center">
-                  <div className="w-4 h-4 rounded border-2 flex items-center justify-center text-white cursor-pointer mx-auto"
-                    style={{ background: row.checked ? PRIMARY : "white", borderColor: row.checked ? PRIMARY : "#cbd5e1", fontSize: "0.55rem" }}
-                    onClick={() => upd(item, "checked", !row.checked)}>{row.checked ? "✓" : ""}</div>
-                </td>
-                <td className="px-3 py-2 font-medium" style={{ color: row.checked ? PRIMARY : "#64748b" }}>{item}</td>
-                <td className="px-2 py-1.5">
-                  <input type="text" value={row.note} onChange={(e) => upd(item, "note", e.target.value)}
-                    disabled={!row.checked} className={`${fi} disabled:bg-slate-50 disabled:text-slate-300`}
-                    placeholder={row.checked ? "내용 및 조치 기재" : "—"} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+  return <EqChecklist items={items} data={data} onChange={onChange} colLabel={colLabel} />;
 }
 
 // ── Truck ─────────────────────────────────────────────────────────────────────
@@ -240,22 +234,25 @@ export function TruckExtraForms({ data, onChange }: ExtraFormProps) {
   const u = (k: string, v: Record<string, unknown>) => onChange(k, v);
   const f = (k: string, fk: string) => (s(k)[fk] as string) ?? "";
   const upd = (k: string, fk: string, v: unknown) => u(k, { ...s(k), [fk]: v });
+  const isDump = f("spec", "vehicleType") === "덤프트럭";
   return (
     <div className="space-y-5">
       <EqSub title="차량 제원">
         <EqTokens label="차량 종류" items={TRUCK_VEHICLE_TYPES} selected={f("spec","vehicleType")}
           onToggle={(v) => upd("spec","vehicleType", f("spec","vehicleType") === v ? "" : v)} />
         <div className="grid grid-cols-4 gap-2 mt-2">
+          <EqF label="차량총중량 (ton)" value={f("spec","grossWeight")} onChange={(v) => upd("spec","grossWeight",v)} placeholder="예: 24" type="number" />
           <EqF label="제한속도 (km/h)" value={f("spec","speedLimit")} onChange={(v) => upd("spec","speedLimit",v)} placeholder="예: 30" type="number" />
           <EqF label="최고속도 (km/h)" value={f("spec","speedMax")} onChange={(v) => upd("spec","speedMax",v)} placeholder="예: 80" type="number" />
           <EqF label="등판능력 (최대경사각)" value={f("spec","climbAngle")} onChange={(v) => upd("spec","climbAngle",v)} placeholder="예: 25°"
             tooltip="최대적재중량 상태의 트럭이 경사면을 올라갈 수 있는 능력(경사지면 최대경사각으로 표시)" />
-          <div />
         </div>
-        <div className="grid grid-cols-4 gap-2 mt-1">
-          <EqF label="덤프 최대경사각 (도)" value={f("spec","dumpAngle")} onChange={(v) => upd("spec","dumpAngle",v)} placeholder="예: 50" type="number" />
-          <EqF label="덤프 상승시간 (sec)" value={f("spec","dumpRiseTime")} onChange={(v) => upd("spec","dumpRiseTime",v)} placeholder="예: 15" type="number" />
-        </div>
+        {isDump && (
+          <div className="grid grid-cols-4 gap-2 mt-1">
+            <EqF label="덤프 최대경사각 (도)" value={f("spec","dumpAngle")} onChange={(v) => upd("spec","dumpAngle",v)} placeholder="예: 50" type="number" />
+            <EqF label="덤프 상승시간 (sec)" value={f("spec","dumpRiseTime")} onChange={(v) => upd("spec","dumpRiseTime",v)} placeholder="예: 15" type="number" />
+          </div>
+        )}
       </EqSub>
       <EqSub title="운행 경로">
         <div className="grid grid-cols-4 gap-2">
@@ -305,6 +302,8 @@ const EXC_CHECKLIST_ITEMS = [
   "좌석 안전띠 착용 가능 상태",
 ];
 
+const EXC_DRIVE_TYPES = ["타이어식", "무한궤도식"];
+
 export function ExcavatorExtraForms({ data, onChange }: ExtraFormProps) {
   const s = (k: string) => ((data[k] ?? {}) as Record<string, unknown>);
   const u = (k: string, v: Record<string, unknown>) => onChange(k, v);
@@ -316,6 +315,21 @@ export function ExcavatorExtraForms({ data, onChange }: ExtraFormProps) {
   const toggleAttach = (t: string) => upd("retaining", "attachments", attachSelected.includes(t) ? attachSelected.filter(x=>x!==t) : [...attachSelected, t]);
   return (
     <div className="space-y-5">
+      <EqSub title="굴착기 제원">
+        <EqTokens label="구동형식" items={EXC_DRIVE_TYPES} selected={f("excSpec","driveType")}
+          onToggle={(v) => upd("excSpec","driveType", f("excSpec","driveType") === v ? "" : v)} />
+        <div className="grid grid-cols-4 gap-2 mt-2">
+          <EqF label="중량 (ton)" value={f("excSpec","weight")} onChange={(v) => upd("excSpec","weight",v)} placeholder="예: 22" type="number" />
+          <EqF label="정격하중 (ton)" value={f("excSpec","ratedLoad")} onChange={(v) => upd("excSpec","ratedLoad",v)} placeholder="예: 3.5" type="number" />
+          <EqF label="제한속도 (km/h)" value={f("excSpec","speedLimit")} onChange={(v) => upd("excSpec","speedLimit",v)} placeholder="예: 20" type="number" />
+          <EqF label="최대 인양높이 (m)" value={f("excSpec","maxLiftHeight")} onChange={(v) => upd("excSpec","maxLiftHeight",v)} placeholder="예: 8.5" type="number" />
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          <EqF label="붐·암 최대 높이 (m)" value={f("excSpec","maxBoomArmHeight")} onChange={(v) => upd("excSpec","maxBoomArmHeight",v)} placeholder="예: 9.2" type="number" />
+          <EqF label="붐·암 길이 표준 (m)" value={f("excSpec","stdBoomArmLen")} onChange={(v) => upd("excSpec","stdBoomArmLen",v)} placeholder="예: 8.0" type="number" />
+          <EqF label="붐·암 길이 최대 (m)" value={f("excSpec","maxBoomArmLen")} onChange={(v) => upd("excSpec","maxBoomArmLen",v)} placeholder="예: 10.0" type="number" />
+        </div>
+      </EqSub>
       <EqSub title="굴착 깊이 및 기울기">
         <div className="grid grid-cols-4 gap-2">
           <EqF label="최대 굴착 깊이 (m)" value={f("depth","depth")} onChange={(v) => upd("depth","depth",v)} placeholder="예: 3.5" type="number" />
@@ -341,7 +355,6 @@ export function ExcavatorExtraForms({ data, onChange }: ExtraFormProps) {
             customKey="기타" customVal={f("retaining","methodCustom")} onCustomChange={(v) => upd("retaining","methodCustom",v)} />
           <EqMultiTokens label="작업장치 선택" items={EXC_ATTACHMENTS} selected={attachSelected} onToggle={toggleAttach}
             customVal={f("retaining","attachmentCustom")} onCustomChange={(v) => upd("retaining","attachmentCustom",v)} />
-          <EqTA label="흙막이 설계 및 시공 특이사항" value={f("retaining","note")} onChange={(v) => upd("retaining","note",v)} placeholder="흙막이 공법 상세, 계측 계획 등" rows={3} />
         </div>
       </EqSub>
       <EqSub title="작동상태 사전 점검표">
@@ -421,6 +434,7 @@ export function AerialLiftExtraForms({ data, onChange }: ExtraFormProps) {
 
 // ── Crane ─────────────────────────────────────────────────────────────────────
 
+const CRANE_TYPES = ["카고크레인", "기중기"] as const;
 const CRANE_GROUND_CHECKS = ["지내력 확인 (지반조사 결과)", "아웃트리거 설치 위치 확인", "아웃트리거 하부 철판 설치", "연약지반 보강 조치"];
 const CRANE_SWING_ITEMS = ["전력선 유무 확인", "구조물 접촉 위험 확인", "출입 인원 통제 확인", "과부하 방지장치 작동 확인", "기타 장애물"];
 const CRANE_CHECKLIST_ITEMS = [
@@ -433,60 +447,141 @@ const CRANE_CHECKLIST_ITEMS = [
   "달기기구(슬링·샤클) 점검 확인",
   "신호수 배치 및 신호 방법 확인",
 ];
+const CRANE_DRIVE_TYPES = ["자주식", "타이어식"];
 
 export function CraneExtraForms({ data, onChange }: ExtraFormProps) {
   const s = (k: string) => ((data[k] ?? {}) as Record<string, unknown>);
   const u = (k: string, v: Record<string, unknown>) => onChange(k, v);
   const f = (k: string, fk: string) => (s(k)[fk] as string) ?? "";
   const upd = (k: string, fk: string, v: unknown) => u(k, { ...s(k), [fk]: v });
+
+  const craneType = f("craneType", "type") as typeof CRANE_TYPES[number] | "";
+
   return (
     <div className="space-y-5">
-      <EqSub title="인양 작업 조건">
-        <div className="grid grid-cols-3 gap-2">
-          <EqF label="작업반경 (m)" value={f("capacity","workRadius")} onChange={(v) => upd("capacity","workRadius",v)} placeholder="예: 12.0" type="number" />
-          <EqF label="붐 길이 (m)" value={f("capacity","boomLength")} onChange={(v) => upd("capacity","boomLength",v)} placeholder="예: 30.0" type="number" />
-          <EqF label="붐 각도 (°)" value={f("capacity","boomAngle")} onChange={(v) => upd("capacity","boomAngle",v)} placeholder="예: 70" type="number" />
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <EqF label="정격총하중-제조사표 (ton)" value={f("capacity","ratedGrossCapacity")} onChange={(v) => upd("capacity","ratedGrossCapacity",v)} placeholder="예: 8.5" type="number" />
-          <EqF label="훅블록 중량 (ton)" value={f("capacity","hookBlockWeight")} onChange={(v) => upd("capacity","hookBlockWeight",v)} placeholder="예: 0.3" type="number" />
-          <EqF label="달기기구 중량 (ton)" value={f("capacity","liftingGearWeight")} onChange={(v) => upd("capacity","liftingGearWeight",v)} placeholder="예: 0.1" type="number" />
-        </div>
-      </EqSub>
-      <EqSub title="달기기구 종류 및 수량">
-        <div className="grid grid-cols-3 gap-2">
-          <EqF label="슬링 종류" value={f("rigging","slingType")} onChange={(v) => upd("rigging","slingType",v)} placeholder="예: 와이어로프 슬링" />
-          <EqF label="슬링 수량 (개)" value={f("rigging","slingQty")} onChange={(v) => upd("rigging","slingQty",v)} placeholder="예: 4" type="number" />
-          <EqF label="슬링 1본당 WLL (ton)" value={f("rigging","slingWllTon")} onChange={(v) => upd("rigging","slingWllTon",v)} placeholder="예: 3.2" type="number" />
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <EqF label="샤클 규격" value={f("rigging","shackleSpec")} onChange={(v) => upd("rigging","shackleSpec",v)} placeholder="예: G2130 3/4″" />
-          <EqF label="샤클 수량 (개)" value={f("rigging","shackleQty")} onChange={(v) => upd("rigging","shackleQty",v)} placeholder="예: 4" type="number" />
-          <EqF label="샤클 1개당 WLL (ton)" value={f("rigging","shackleWllTon")} onChange={(v) => upd("rigging","shackleWllTon",v)} placeholder="예: 4.75" type="number" />
-        </div>
-        <EqTA label="달기기구 점검 상태" value={f("rigging","condition")} onChange={(v) => upd("rigging","condition",v)} placeholder="점검일, 이상 여부 등" />
-      </EqSub>
-      <EqSub title="선회 반경 내 장애물">
-        <EqRowTable items={CRANE_SWING_ITEMS} colLabel="확인 항목" data={s("swing") as CheckTableData} onChange={(d) => u("swing",d)} />
-      </EqSub>
-      <EqSub title="신호 방법 및 신호수 배치">
-        <div className="grid grid-cols-4 gap-2">
-          <EqF label="신호 방법" value={f("signal","method")} onChange={(v) => upd("signal","method",v)} placeholder="예: 무전기 + 수신호" />
-          <EqF label="신호수 이름" value={f("signal","signalPerson")} onChange={(v) => upd("signal","signalPerson",v)} placeholder="홍길동" />
-          <EqF label="신호수 배치 위치" value={f("signal","position")} onChange={(v) => upd("signal","position",v)} placeholder="예: 인양물 북측" />
-          <EqF label="비상 신호 방법" value={f("signal","emergency")} onChange={(v) => upd("signal","emergency",v)} placeholder="비상 중지 신호 등" />
+
+      {/* 크레인 유형 선택 */}
+      <EqSub title="크레인 유형">
+        <div className="flex gap-2">
+          {CRANE_TYPES.map((t) => (
+            <button key={t} type="button"
+              onClick={() => upd("craneType", "type", craneType === t ? "" : t)}
+              className="px-4 py-2 rounded-lg border-2 text-xs font-semibold transition-all"
+              style={{
+                borderColor: craneType === t ? PRIMARY : "#e2e8f0",
+                background: craneType === t ? PRIMARY : "white",
+                color: craneType === t ? "white" : "#64748b",
+              }}>
+              {t}
+            </button>
+          ))}
         </div>
       </EqSub>
-      <EqSub title="하부지반 지지력 확인">
-        <div className="grid grid-cols-4 gap-2 mb-2">
-          <EqF label="지내력 (kN/m²)" value={f("ground","bearing")} onChange={(v) => upd("ground","bearing",v)} placeholder="예: 150" type="number" />
-          <EqF label="지반 보강 방법" value={f("ground","reinforcement")} onChange={(v) => upd("ground","reinforcement",v)} placeholder="지반 보강 조치 내용" colSpan={3} />
-        </div>
-        <EqCheckboxList items={CRANE_GROUND_CHECKS} data={s("ground")} onChange={(d) => u("ground",d)} />
-      </EqSub>
-      <EqSub title="사전 점검표">
-        <EqChecklist items={CRANE_CHECKLIST_ITEMS} data={s("checklist") as CheckTableData} onChange={(d) => u("checklist",d)} />
-      </EqSub>
+
+      {/* 카고크레인 전용 */}
+      {craneType === "카고크레인" && (
+        <>
+          <EqSub title="안전검사">
+            <div className="grid grid-cols-3 gap-2">
+              <EqF label="최대 작업높이 (m)" value={f("cargoSpec","maxHeight")} onChange={(v) => upd("cargoSpec","maxHeight",v)} placeholder="예: 20" type="number" />
+              <EqF label="최대 작업반경 (m)" value={f("cargoSpec","maxRadius")} onChange={(v) => upd("cargoSpec","maxRadius",v)} placeholder="예: 12" type="number" />
+              <EqF label="정격하중 (톤)" value={f("cargoSpec","ratedLoad")} onChange={(v) => upd("cargoSpec","ratedLoad",v)} placeholder="예: 5.0" type="number" />
+            </div>
+          </EqSub>
+          <EqSub title="아웃트리거 최대 폭">
+            <div className="grid grid-cols-2 gap-2">
+              <EqF label="앞 (m)" value={f("cargoSpec","outriggerFront")} onChange={(v) => upd("cargoSpec","outriggerFront",v)} placeholder="예: 5.5" type="number" />
+              <EqF label="뒤 (m)" value={f("cargoSpec","outriggerRear")} onChange={(v) => upd("cargoSpec","outriggerRear",v)} placeholder="예: 5.5" type="number" />
+            </div>
+          </EqSub>
+        </>
+      )}
+
+      {/* 기중기 전용 */}
+      {craneType === "기중기" && (
+        <>
+          <EqSub title="기중기 제원">
+            <div className="grid grid-cols-3 gap-2">
+              <EqF label="길이 (m)" value={f("crawlerSpec","length")} onChange={(v) => upd("crawlerSpec","length",v)} placeholder="예: 12.0" type="number" />
+              <EqF label="너비 (m)" value={f("crawlerSpec","width")} onChange={(v) => upd("crawlerSpec","width",v)} placeholder="예: 4.5" type="number" />
+              <EqF label="높이 (m)" value={f("crawlerSpec","height")} onChange={(v) => upd("crawlerSpec","height",v)} placeholder="예: 3.8" type="number" />
+            </div>
+            <div className="mt-2">
+              <EqTokens label="주행방식" items={CRANE_DRIVE_TYPES}
+                selected={f("crawlerSpec","driveType")}
+                onToggle={(v) => upd("crawlerSpec","driveType", f("crawlerSpec","driveType") === v ? "" : v)} />
+            </div>
+          </EqSub>
+          <EqSub title="붐 및 하중 제원">
+            <div className="grid grid-cols-3 gap-2">
+              <EqF label="표준붐의 작업반경 (m)" value={f("crawlerSpec","stdBoomRadius")} onChange={(v) => upd("crawlerSpec","stdBoomRadius",v)} placeholder="예: 10.0" type="number" />
+              <EqF label="붐길이 최대 (m)" value={f("crawlerSpec","maxBoomLength")} onChange={(v) => upd("crawlerSpec","maxBoomLength",v)} placeholder="예: 60.0" type="number" />
+              <EqF label="붐의 최대각도 (°)" value={f("crawlerSpec","maxBoomAngle")} onChange={(v) => upd("crawlerSpec","maxBoomAngle",v)} placeholder="예: 82" type="number" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <EqF label="붐의 최소각도 (°)" value={f("crawlerSpec","minBoomAngle")} onChange={(v) => upd("crawlerSpec","minBoomAngle",v)} placeholder="예: 30" type="number" />
+              <EqF label="최대정격 총하중 (톤)" value={f("crawlerSpec","maxRatedLoad")} onChange={(v) => upd("crawlerSpec","maxRatedLoad",v)} placeholder="예: 100" type="number" />
+              <EqF label="최소정격 하중 (톤)" value={f("crawlerSpec","minRatedLoad")} onChange={(v) => upd("crawlerSpec","minRatedLoad",v)} placeholder="예: 2.0" type="number" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <EqF label="훅 최대지상높이 (m)" value={f("crawlerSpec","maxHookHeight")} onChange={(v) => upd("crawlerSpec","maxHookHeight",v)} placeholder="예: 58.0" type="number" />
+              <EqF label="아웃트리거설치폭 (m)" value={f("crawlerSpec","outriggerWidth")} onChange={(v) => upd("crawlerSpec","outriggerWidth",v)} placeholder="예: 7.5" type="number" />
+            </div>
+          </EqSub>
+        </>
+      )}
+
+      {/* 공통 섹션 (유형 선택 후 표시) */}
+      {craneType && (
+        <>
+          <EqSub title="인양 작업 조건">
+            <div className="grid grid-cols-3 gap-2">
+              <EqF label="작업반경 (m)" value={f("capacity","workRadius")} onChange={(v) => upd("capacity","workRadius",v)} placeholder="예: 12.0" type="number" />
+              <EqF label="붐 길이 (m)" value={f("capacity","boomLength")} onChange={(v) => upd("capacity","boomLength",v)} placeholder="예: 30.0" type="number" />
+              <EqF label="붐 각도 (°)" value={f("capacity","boomAngle")} onChange={(v) => upd("capacity","boomAngle",v)} placeholder="예: 70" type="number" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <EqF label="정격총하중-제조사표 (ton)" value={f("capacity","ratedGrossCapacity")} onChange={(v) => upd("capacity","ratedGrossCapacity",v)} placeholder="예: 8.5" type="number" />
+              <EqF label="훅블록 중량 (ton)" value={f("capacity","hookBlockWeight")} onChange={(v) => upd("capacity","hookBlockWeight",v)} placeholder="예: 0.3" type="number" />
+              <EqF label="달기기구 중량 (ton)" value={f("capacity","liftingGearWeight")} onChange={(v) => upd("capacity","liftingGearWeight",v)} placeholder="예: 0.1" type="number" />
+            </div>
+          </EqSub>
+          <EqSub title="달기기구 종류 및 수량">
+            <div className="grid grid-cols-3 gap-2">
+              <EqF label="슬링 종류" value={f("rigging","slingType")} onChange={(v) => upd("rigging","slingType",v)} placeholder="예: 와이어로프 슬링" />
+              <EqF label="슬링 수량 (개)" value={f("rigging","slingQty")} onChange={(v) => upd("rigging","slingQty",v)} placeholder="예: 4" type="number" />
+              <EqF label="슬링 1본당 WLL (ton)" value={f("rigging","slingWllTon")} onChange={(v) => upd("rigging","slingWllTon",v)} placeholder="예: 3.2" type="number" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <EqF label="샤클 규격" value={f("rigging","shackleSpec")} onChange={(v) => upd("rigging","shackleSpec",v)} placeholder="예: G2130 3/4″" />
+              <EqF label="샤클 수량 (개)" value={f("rigging","shackleQty")} onChange={(v) => upd("rigging","shackleQty",v)} placeholder="예: 4" type="number" />
+              <EqF label="샤클 1개당 WLL (ton)" value={f("rigging","shackleWllTon")} onChange={(v) => upd("rigging","shackleWllTon",v)} placeholder="예: 4.75" type="number" />
+            </div>
+            <EqTA label="달기기구 점검 상태" value={f("rigging","condition")} onChange={(v) => upd("rigging","condition",v)} placeholder="점검일, 이상 여부 등" />
+          </EqSub>
+          <EqSub title="선회 반경 내 장애물">
+            <EqRowTable items={CRANE_SWING_ITEMS} colLabel="확인 항목" data={s("swing") as CheckTableData} onChange={(d) => u("swing",d)} />
+          </EqSub>
+          <EqSub title="신호 방법 및 신호수 배치">
+            <div className="grid grid-cols-4 gap-2">
+              <EqF label="신호 방법" value={f("signal","method")} onChange={(v) => upd("signal","method",v)} placeholder="예: 무전기 + 수신호" />
+              <EqF label="신호수 이름" value={f("signal","signalPerson")} onChange={(v) => upd("signal","signalPerson",v)} placeholder="홍길동" />
+              <EqF label="신호수 배치 위치" value={f("signal","position")} onChange={(v) => upd("signal","position",v)} placeholder="예: 인양물 북측" />
+              <EqF label="비상 신호 방법" value={f("signal","emergency")} onChange={(v) => upd("signal","emergency",v)} placeholder="비상 중지 신호 등" />
+            </div>
+          </EqSub>
+          <EqSub title="하부지반 지지력 확인">
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              <EqF label="지내력 (kN/m²)" value={f("ground","bearing")} onChange={(v) => upd("ground","bearing",v)} placeholder="예: 150" type="number" />
+              <EqF label="지반 보강 방법" value={f("ground","reinforcement")} onChange={(v) => upd("ground","reinforcement",v)} placeholder="지반 보강 조치 내용" colSpan={3} />
+            </div>
+            <EqCheckboxList items={CRANE_GROUND_CHECKS} data={s("ground")} onChange={(d) => u("ground",d)} />
+          </EqSub>
+          <EqSub title="사전 점검표">
+            <EqChecklist items={CRANE_CHECKLIST_ITEMS} data={s("checklist") as CheckTableData} onChange={(d) => u("checklist",d)} />
+          </EqSub>
+        </>
+      )}
     </div>
   );
 }

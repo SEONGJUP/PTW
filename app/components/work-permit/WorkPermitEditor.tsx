@@ -546,7 +546,7 @@ async function exportPermitExcel(permit: WorkPermit) {
   // ── 시트 1: 기본정보 ─────────────────────────────────────────
   const allTypesForExport = [permit.type, ...(permit.extraTypes ?? [])];
   const basicRows = [
-    { 항목: "허가서 유형",    값: allTypesForExport.map((t) => WORK_PERMIT_TYPE_LABELS[t]).join(" + ") },
+    { 항목: "허가서 유형",    값: allTypesForExport.map((t) => WORK_PERMIT_TYPE_LABELS[t]).join(" · ") },
     { 항목: "기타 작업명",    값: permit.customTypeName },
     { 항목: "상태",           값: WORK_PERMIT_STATUS_LABELS[permit.status] },
     { 항목: "작업명",         값: permit.title },
